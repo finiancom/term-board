@@ -486,6 +486,9 @@
   }
   .week-block-code{font-family:"IBM Plex Mono"; font-weight:700; margin-right:2px;}
   .week-block-room{display:block; font-size:.62rem; opacity:.8;}
+  .week-block.session-block{border:1.5px dashed currentColor; cursor:pointer;}
+  .week-block.session-block.session-block-neutral{background:var(--surface-2); color:var(--ink-soft); border-color:var(--line-strong);}
+  .week-chip.session-chip{border:1px dashed currentColor;}
 
   .day-chip{
     display:flex; align-items:center; gap:6px; font-size:.8rem; color:var(--accent-soft-ink);
@@ -626,6 +629,7 @@
       <button class="btn btn-full" id="addCourseBtn">+ Add course</button>
     </div>
     <button class="btn btn-primary btn-full" id="addItemBtn" style="padding:12px;">+ Add deadline / exam</button>
+    <button class="btn btn-full" id="addSessionBtn" style="padding:12px;">+ Plan study session</button>
     <div class="panel data-panel">
       <h2>Data</h2>
       <div class="data-actions">
@@ -650,6 +654,7 @@
       <div class="tabs" id="tabs">
         <button class="tab" data-tab="upcoming">Upcoming</button>
         <button class="tab" data-tab="exams">Exams</button>
+        <button class="tab" data-tab="study">Study</button>
         <button class="tab" data-tab="all">All</button>
         <button class="tab" data-tab="done">Completed</button>
       </div>
@@ -755,6 +760,47 @@
   </form>
 </dialog>
 
+<dialog id="sessionDialog">
+  <form class="dlg-body" id="sessionForm" method="dialog">
+    <div class="dlg-head">
+      <h2 id="sessionDlgTitle">Plan study session</h2>
+    </div>
+    <div class="field">
+      <label for="ss-title">What are you studying?</label>
+      <input type="text" id="ss-title" required placeholder="e.g. Review chapters 4–6">
+    </div>
+    <div class="field">
+      <label for="ss-course">Course (optional)</label>
+      <select id="ss-course"><option value="">No course</option></select>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="ss-date">Date</label>
+        <input type="date" id="ss-date" required>
+      </div>
+      <div class="field">
+        <label for="ss-start">Start (optional)</label>
+        <input type="time" id="ss-start">
+      </div>
+      <div class="field">
+        <label for="ss-end">End (optional)</label>
+        <input type="time" id="ss-end">
+      </div>
+    </div>
+    <div class="field">
+      <label for="ss-notes">Notes</label>
+      <textarea id="ss-notes" placeholder="What to cover, materials to bring..."></textarea>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-ghost btn-danger-text" id="sessionDeleteBtn" hidden>Delete</button>
+      <div class="right">
+        <button type="button" class="btn" id="sessionCancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="sessionSaveBtn">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="semesterDialog">
   <form class="dlg-body" id="semesterForm" method="dialog">
     <div class="dlg-head">
@@ -816,10 +862,12 @@
   var state = {
     courses: [],
     items: [],
+    sessions: [],
     tab: "upcoming",
     courseFilter: null,
     editingItemId: null,
     editingCourseId: null,
+    editingSessionId: null,
     calYear: now.getFullYear(),
     calMonth: now.getMonth(),
     dayFilter: null,
@@ -845,6 +893,7 @@
         var parsed = JSON.parse(raw);
         state.courses = parsed.courses || [];
         state.items = parsed.items || [];
+        state.sessions = parsed.sessions || [];
         state.semester = parsed.semester || null;
       }
     }catch(e){ /* storage unavailable (private window, blocked) - render empty */ }
@@ -852,7 +901,7 @@
 
   function saveLocal(){
     try{
-      localStorage.setItem(localKey(), JSON.stringify({courses:state.courses, items:state.items, semester:state.semester}));
+      localStorage.setItem(localKey(), JSON.stringify({courses:state.courses, items:state.items, sessions:state.sessions, semester:state.semester}));
     }catch(e){ showBanner("Your browser blocked saving (private window, or storage full) — changes may not persist."); }
   }
 
@@ -880,6 +929,9 @@
   function deleteCourseAndItems(courseId){
     state.courses = state.courses.filter(function(c){return c.id!==courseId;});
     state.items = state.items.filter(function(i){return i.courseId!==courseId;});
+    // Study sessions can stand on their own, so a deleted course just
+    // unlinks them rather than taking them down too.
+    state.sessions.forEach(function(s){ if(s.courseId===courseId) s.courseId = null; });
     saveLocal(); render();
   }
 
@@ -899,6 +951,22 @@
     saveLocal(); render();
   }
 
+  function persistSession(session){
+    var idx = state.sessions.findIndex(function(x){return x.id===session.id;});
+    if(idx>=0) state.sessions[idx]=session; else state.sessions.push(session);
+    saveLocal(); render();
+  }
+
+  function deleteSession(sessionId){
+    state.sessions = state.sessions.filter(function(s){return s.id!==sessionId;});
+    saveLocal(); render();
+  }
+
+  function toggleSessionStatus(session){
+    session.status = session.status === "done" ? "planned" : "done";
+    saveLocal(); render();
+  }
+
   function persistSemester(sem){
     state.semester = sem;
     saveLocal(); render();
@@ -908,7 +976,7 @@
     var payload = {
       exportedAt: new Date().toISOString(),
       app: "term-board", version: 1,
-      courses: state.courses, items: state.items, semester: state.semester
+      courses: state.courses, items: state.items, sessions: state.sessions, semester: state.semester
     };
     var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
     var stamp = todayStr();
@@ -951,15 +1019,19 @@
           showBanner("That file doesn't look like a Term Board backup.");
           return;
         }
-        var merge = state.courses.length || state.items.length;
+        var dataSessions = Array.isArray(data.sessions) ? data.sessions : [];
+        var merge = state.courses.length || state.items.length || state.sessions.length;
         if(merge && !window.confirm("Replace your current courses and items with the ones in this file? Click Cancel to keep both (imported items are added alongside what you have).")){
           var existingCourseIds = {}; state.courses.forEach(function(c){existingCourseIds[c.id]=true;});
           data.courses.forEach(function(c){ if(!existingCourseIds[c.id]) state.courses.push(c); });
           var existingItemIds = {}; state.items.forEach(function(i){existingItemIds[i.id]=true;});
           data.items.forEach(function(i){ if(!existingItemIds[i.id]) state.items.push(i); });
+          var existingSessionIds = {}; state.sessions.forEach(function(s){existingSessionIds[s.id]=true;});
+          dataSessions.forEach(function(s){ if(!existingSessionIds[s.id]) state.sessions.push(s); });
         }else{
           state.courses = data.courses;
           state.items = data.items;
+          state.sessions = dataSessions;
           if(data.semester) state.semester = data.semester;
         }
         saveLocal(); render();
@@ -1339,16 +1411,28 @@
         });
       });
     }
-    lessonsToday.sort(function(a,b){ return (toMinutes(a.sched.start)||0) - (toMinutes(b.sched.start)||0); });
 
-    var current = lessonsToday.find(function(l){
+    // Self-study is fair game any day, including breaks/exam period, so
+    // sessions aren't gated by teachingToday the way lessons are.
+    var sessionsToday = state.sessions.filter(function(s){
+      return s.date === t && s.status !== "done" && (!state.courseFilter || s.courseId === state.courseFilter);
+    });
+
+    var agenda = lessonsToday.map(function(l){
       var s = toMinutes(l.sched.start), e = toMinutes(l.sched.end);
       if(e==null && s!=null) e = s+45;
-      return s!=null && nowMinutes>=s && nowMinutes<e;
+      return {kind:"class", start:s, end:e, data:l};
+    }).concat(sessionsToday.filter(function(s){ return !!s.startTime; }).map(function(s){
+      var st = toMinutes(s.startTime), en = s.endTime ? toMinutes(s.endTime) : st+60;
+      return {kind:"session", start:st, end:en, data:s};
+    }));
+    agenda.sort(function(a,b){ return (a.start||0) - (b.start||0); });
+
+    var current = agenda.find(function(a){
+      return a.start!=null && nowMinutes>=a.start && nowMinutes<a.end;
     });
-    var next = lessonsToday.find(function(l){
-      var s = toMinutes(l.sched.start);
-      return s!=null && s>nowMinutes;
+    var next = agenda.find(function(a){
+      return a.start!=null && a.start>nowMinutes;
     });
 
     var items = state.items.filter(function(i){ return i.status !== "done"; });
@@ -1378,19 +1462,34 @@
     addItemBtn.textContent = activeCourse ? ("+ Add to " + activeCourse.name) : "+ Add deadline / exam";
   }
 
+  /** Turns one agenda entry (a class or a study session) into the left
+   * ribbon segment's display fields. */
+  function agendaSegment(entry, isCurrent){
+    if(entry.kind === "class"){
+      var c = entry.data.course, s = entry.data.sched;
+      return isCurrent
+        ? {active:true, label:"In class now", value:s.code+" "+c.name,
+            sub:(s.room?s.room+" · ":"")+"until "+formatTime(s.end||s.start), courseId:c.id}
+        : {active:false, label:"Next class today", value:s.code+" "+c.name,
+            sub:"at "+formatTime(s.start)+(s.room?" · "+s.room:""), courseId:c.id};
+    }
+    var sess = entry.data, sc = courseById(sess.courseId);
+    return isCurrent
+      ? {active:true, label:"Studying now", value:sess.title+(sc?" · "+sc.name:""),
+          sub:"until "+formatTime(sess.endTime||sess.startTime), sessionId:sess.id}
+      : {active:false, label:"Next study session", value:sess.title+(sc?" · "+sc.name:""),
+          sub:"at "+formatTime(sess.startTime), sessionId:sess.id};
+  }
+
   function renderNowRibbon(){
     var el = document.getElementById("nowRibbon");
     var info = rightNowInfo();
 
     var left;
     if(info.current){
-      var c = info.current.course, s = info.current.sched;
-      left = {active:true, label:"In class now", value:s.code+" "+c.name,
-        sub:(s.room?s.room+" · ":"")+"until "+formatTime(s.end||s.start), courseId:c.id};
-    }else if(info.teachingToday && info.next){
-      var c2 = info.next.course, s2 = info.next.sched;
-      left = {active:false, label:"Next class today", value:s2.code+" "+c2.name,
-        sub:"at "+formatTime(s2.start)+(s2.room?" · "+s2.room:""), courseId:c2.id};
+      left = agendaSegment(info.current, true);
+    }else if(info.next){
+      left = agendaSegment(info.next, false);
     }else if(!info.teachingToday){
       var status = semesterStatus();
       var label = (status && (status.kind==="break"||status.kind==="exam")) ? status.label : "No classes today";
@@ -1410,7 +1509,7 @@
     }
 
     el.innerHTML =
-      '<div class="now-seg '+(left.active?"active":"")+'" '+(left.courseId?'data-goto-course="'+left.courseId+'"':'')+'>'+
+      '<div class="now-seg '+(left.active?"active":"")+'" '+(left.courseId?'data-goto-course="'+left.courseId+'"':'')+(left.sessionId?'data-goto-session="'+left.sessionId+'"':'')+'>'+
         '<div class="now-label">'+left.label+'</div><div class="now-value">'+escapeHtml(left.value)+'</div>'+
         (left.sub?'<div class="now-sub">'+escapeHtml(left.sub)+'</div>':'')+
       '</div>'+
@@ -1490,6 +1589,12 @@
     return items;
   }
 
+  function calendarSessions(){
+    var sessions = state.sessions.filter(function(s){ return s.status !== "done"; });
+    if(state.courseFilter) sessions = sessions.filter(function(s){ return s.courseId === state.courseFilter; });
+    return sessions;
+  }
+
   function calHeadHtml(titleHtml, prevLabel, nextLabel){
     return '<div class="cal-head">'+
       '<div class="cal-title">'+titleHtml+'</div>'+
@@ -1519,6 +1624,10 @@
     items.forEach(function(i){
       (byDate[i.dueDate] = byDate[i.dueDate] || []).push(i);
     });
+    var sessionsByDate = {};
+    calendarSessions().forEach(function(s){
+      (sessionsByDate[s.date] = sessionsByDate[s.date] || []).push(s);
+    });
 
     var firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Monday = 0
     var daysInMonth = new Date(year, month+1, 0).getDate();
@@ -1532,6 +1641,8 @@
     for(var d=1; d<=daysInMonth; d++){
       var dateStr = year+"-"+pad2(month+1)+"-"+pad2(d);
       var dayItems = byDate[dateStr] || [];
+      var daySessions = sessionsByDate[dateStr] || [];
+      var dayCount = dayItems.length + daySessions.length;
       var isToday = dateStr === todayStrVal;
       var isSelected = dateStr === state.dayFilter;
       var hasExam = dayItems.some(function(x){ return x.type==="exam"; });
@@ -1541,12 +1652,17 @@
         var col = c ? c.color : "slate";
         if(colorsSeen.indexOf(col) === -1) colorsSeen.push(col);
       });
+      daySessions.forEach(function(s){
+        var c = courseById(s.courseId);
+        var col = c ? c.color : "slate";
+        if(colorsSeen.indexOf(col) === -1) colorsSeen.push(col);
+      });
       var dots = colorsSeen.slice(0,4).map(function(col){
         return '<span class="cal-dot swatch-'+col+'"></span>';
       }).join("");
-      var more = dayItems.length > 4 ? '<span class="cal-more">+'+(dayItems.length-4)+'</span>' : "";
-      cellsHtml += '<div class="cal-cell '+(dayItems.length?'has-items':'')+' '+(isToday?'today':'')+' '+(isSelected?'selected':'')+' '+(hasExam?'exam-day':'')+'" '+
-        (dayItems.length ? ('data-day="'+dateStr+'"') : '')+' title="'+dayItems.length+' item'+(dayItems.length===1?'':'s')+'">'+
+      var more = dayCount > 4 ? '<span class="cal-more">+'+(dayCount-4)+'</span>' : "";
+      cellsHtml += '<div class="cal-cell '+(dayCount?'has-items':'')+' '+(isToday?'today':'')+' '+(isSelected?'selected':'')+' '+(hasExam?'exam-day':'')+'" '+
+        (dayCount ? ('data-day="'+dateStr+'"') : '')+' title="'+dayCount+' item'+(dayCount===1?'':'s')+'">'+
         '<span class="cal-daynum">'+d+'</span><span class="cal-dots">'+dots+more+'</span></div>';
     }
 
@@ -1581,6 +1697,8 @@
     var items = calendarItems();
     var byDate = {};
     items.forEach(function(i){ (byDate[i.dueDate]=byDate[i.dueDate]||[]).push(i); });
+    var sessionsByDate = {};
+    calendarSessions().forEach(function(s){ (sessionsByDate[s.date]=sessionsByDate[s.date]||[]).push(s); });
 
     var courses = state.courseFilter ? [courseById(state.courseFilter)].filter(Boolean) : state.courses;
     var lessonsByDow = [[],[],[],[],[],[],[]];
@@ -1597,6 +1715,14 @@
         if(s!=null) minMin = Math.min(minMin, s);
         if(e!=null) maxMin = Math.max(maxMin, e);
         else if(s!=null) maxMin = Math.max(maxMin, s+60);
+      });
+    });
+    days.forEach(function(dateStr){
+      (sessionsByDate[dateStr]||[]).forEach(function(s){
+        if(!s.startTime) return;
+        var st = toMinutes(s.startTime), en = s.endTime ? toMinutes(s.endTime) : st+60;
+        minMin = Math.min(minMin, st);
+        maxMin = Math.max(maxMin, en);
       });
     });
     minMin = Math.max(0, Math.floor(minMin/60)*60 - 60);
@@ -1619,12 +1745,18 @@
       headCells += '<div class="week-day-head '+(isToday?"today":"")+'">'+WEEKDAY_SHORT[dow]+' <span class="wd-num">'+dateFromParts(dateStr).getDate()+'</span></div>';
 
       var dayItems = byDate[dateStr] || [];
+      var daySessions = sessionsByDate[dateStr] || [];
       var chips = dayItems.map(function(it){
         var c = courseById(it.courseId);
         var col = c ? c.color : "slate";
         return '<div class="week-chip course-color-'+col+' '+(it.type==="exam"?"exam":"")+'" data-item="'+it.id+'" title="'+escapeHtml(it.title)+'">'+escapeHtml(it.title)+'</div>';
       }).join("");
-      allDayCells += '<div class="week-allday-cell">'+chips+'</div>';
+      var untimedSessionChips = daySessions.filter(function(s){ return !s.startTime; }).map(function(s){
+        var c = courseById(s.courseId);
+        var col = c ? c.color : "slate";
+        return '<div class="week-chip session-chip course-color-'+col+'" data-session="'+s.id+'" title="Study: '+escapeHtml(s.title)+'">'+escapeHtml(s.title)+'</div>';
+      }).join("");
+      allDayCells += '<div class="week-allday-cell">'+chips+untimedSessionChips+'</div>';
 
       var blocks = lessonsByDow[dow].map(function(entry){
         var s = toMinutes(entry.sched.start);
@@ -1639,7 +1771,20 @@
         '</div>';
       }).join("");
 
-      bodyCells += '<div class="week-day-body '+(nonTeaching?"non-teaching":"")+'">'+blocks+'</div>';
+      var sessionBlocks = daySessions.filter(function(s){ return !!s.startTime; }).map(function(s){
+        var st = toMinutes(s.startTime);
+        var en = s.endTime ? toMinutes(s.endTime) : st+60;
+        var top = (st-minMin)/totalMin*bodyHeight;
+        var height = Math.max(20, (en-st)/totalMin*bodyHeight);
+        var c = courseById(s.courseId);
+        var colCls = c ? "course-color-"+c.color : "session-block-neutral";
+        var tip = "Study: "+s.title+(c?" — "+c.name:"")+" "+formatTime(s.startTime)+(s.endTime?"–"+formatTime(s.endTime):"");
+        return '<div class="week-block session-block '+colCls+'" style="top:'+top+'px; height:'+height+'px;" data-session="'+s.id+'" title="'+escapeHtml(tip)+'">'+
+          '<span class="week-block-code">Study</span> '+escapeHtml(s.title)+
+        '</div>';
+      }).join("");
+
+      bodyCells += '<div class="week-day-body '+(nonTeaching?"non-teaching":"")+'">'+blocks+sessionBlocks+'</div>';
     });
 
     el.innerHTML = calHeadHtml(title, "Previous week", "Next week")+
@@ -1748,16 +1893,57 @@
     '</div>';
   }
 
+  function sessionCard(session){
+    var c = courseById(session.courseId);
+    var isDone = session.status === "done";
+    var isPast = !isDone && dayDiff(session.date) < 0;
+    var timeLabel = session.startTime ? (formatTime(session.startTime)+(session.endTime?"–"+formatTime(session.endTime):"")) : "";
+    var when = (dayDiff(session.date)===0 ? "Today" : dayDiff(session.date)===1 ? "Tomorrow" : formatDate(session.date)) + (timeLabel?" · "+timeLabel:"");
+    return '<div class="item '+(isDone?'done':'')+' '+(isPast?'overdue':'')+'" data-session="'+session.id+'">'+
+      '<button class="check '+(isDone?'checked':'')+'" data-toggle-session="'+session.id+'" aria-label="Mark studied">'+(isDone?'✓':'')+'</button>'+
+      '<div class="item-main">'+
+        '<div class="item-top">'+
+          '<span class="item-title">'+escapeHtml(session.title)+'</span>'+
+          '<span class="badge badge-type-other">Study</span>'+
+        '</div>'+
+        '<div class="item-meta">'+
+          (c ? '<span class="badge badge-course '+ 'course-color-'+c.color+'">'+escapeHtml(c.name)+'</span>' : '')+
+          '<span class="due-when">'+when+'</span>'+
+        '</div>'+
+        (session.notes ? '<div class="item-notes">'+escapeHtml(session.notes)+'</div>' : '')+
+      '</div>'+
+    '</div>';
+  }
+
   function groupHeader(text, danger){
     return '<div class="group-title '+(danger?'od':'')+'">'+text+'<span class="line"></span></div>';
+  }
+
+  /** Sorts a list of items/sessions into the Overdue/Today/Tomorrow/This
+   * week/Later/Completed buckets used by both the deadlines and study
+   * views. `dateOf`/`doneOf` extract the relevant fields for either shape. */
+  function bucketByDate(list, dateOf, doneOf){
+    var buckets = {overdue:[], today:[], tomorrow:[], week:[], later:[], done:[]};
+    list.forEach(function(x){
+      if(doneOf(x)){ buckets.done.push(x); return; }
+      var d = dayDiff(dateOf(x));
+      if(d<0) buckets.overdue.push(x);
+      else if(d===0) buckets.today.push(x);
+      else if(d===1) buckets.tomorrow.push(x);
+      else if(d<=6) buckets.week.push(x);
+      else buckets.later.push(x);
+    });
+    return buckets;
   }
 
   function renderList(){
     var el = document.getElementById("listArea");
     var items = state.items.slice();
     if(state.courseFilter) items = items.filter(function(i){return i.courseId===state.courseFilter;});
+    var sessions = state.sessions.slice();
+    if(state.courseFilter) sessions = sessions.filter(function(s){return s.courseId===state.courseFilter;});
 
-    if(state.courses.length === 0){
+    if(state.courses.length === 0 && state.tab !== "study" && !state.dayFilter){
       el.innerHTML = '<div class="empty-state"><h3>Set up your first course</h3>'+
         '<p>Add a course, then start logging assignments, readings, and exam dates against it.</p>'+
         '<button class="btn btn-primary" id="emptyAddCourse">+ Add course</button></div>';
@@ -1772,7 +1958,13 @@
       var dayItems = items.filter(function(i){ return i.dueDate === state.dayFilter; }).sort(function(a,b){
         return dateFromParts(a.dueDate,a.dueTime) - dateFromParts(b.dueDate,b.dueTime);
       });
-      html = dayItems.length ? '<div class="group">'+dayItems.map(itemCard).join("")+'</div>' : emptyStateHtml("Nothing on this day", "Pick another date on the calendar, or clear the filter.");
+      var daySessions = sessions.filter(function(s){ return s.date === state.dayFilter; }).sort(function(a,b){
+        return (toMinutes(a.startTime)||0) - (toMinutes(b.startTime)||0);
+      });
+      var parts = [];
+      if(dayItems.length) parts.push('<div class="group">'+dayItems.map(itemCard).join("")+'</div>');
+      if(daySessions.length) parts.push(groupHeader("Study sessions") + '<div class="group">'+daySessions.map(sessionCard).join("")+'</div>');
+      html = parts.length ? parts.join("") : emptyStateHtml("Nothing on this day", "Pick another date on the calendar, or clear the filter.");
       el.innerHTML = '<div style="display:flex; flex-direction:column; gap:16px;">'+html+'</div>';
       return;
     }
@@ -1791,6 +1983,19 @@
         return dateFromParts(b.dueDate,b.dueTime) - dateFromParts(a.dueDate,a.dueTime);
       });
       html = done.length ? '<div class="group">'+done.map(itemCard).join("")+'</div>' : emptyStateHtml("Nothing completed yet", "Items you check off will show up here.");
+    } else if(state.tab === "study"){
+      sessions.sort(function(a,b){ return dateFromParts(a.date,a.startTime) - dateFromParts(b.date,b.startTime); });
+      if(sessions.length === 0){
+        html = emptyStateHtml("No study sessions planned", "Plan one to block out time for a course, or just a topic — no course required.");
+      }else{
+        var sb = bucketByDate(sessions, function(s){return s.date;}, function(s){return s.status==="done";});
+        if(sb.overdue.length){ html += groupHeader("Past") + '<div class="group">'+sb.overdue.map(sessionCard).join("")+'</div>'; }
+        if(sb.today.length){ html += groupHeader("Today") + '<div class="group">'+sb.today.map(sessionCard).join("")+'</div>'; }
+        if(sb.tomorrow.length){ html += groupHeader("Tomorrow") + '<div class="group">'+sb.tomorrow.map(sessionCard).join("")+'</div>'; }
+        if(sb.week.length){ html += groupHeader("This week") + '<div class="group">'+sb.week.map(sessionCard).join("")+'</div>'; }
+        if(sb.later.length){ html += groupHeader("Later") + '<div class="group">'+sb.later.map(sessionCard).join("")+'</div>'; }
+        if(sb.done.length){ html += groupHeader("Completed") + '<div class="group">'+sb.done.map(sessionCard).join("")+'</div>'; }
+      }
     } else {
       var pending = items.filter(function(i){return i.status!=="done";});
       if(state.tab === "all"){
@@ -1798,16 +2003,7 @@
       }
       pending.sort(function(a,b){ return dateFromParts(a.dueDate,a.dueTime) - dateFromParts(b.dueDate,b.dueTime); });
 
-      var buckets = {overdue:[], today:[], tomorrow:[], week:[], later:[], done:[]};
-      pending.forEach(function(i){
-        if(i.status === "done"){ buckets.done.push(i); return; }
-        var d = dayDiff(i.dueDate);
-        if(d<0) buckets.overdue.push(i);
-        else if(d===0) buckets.today.push(i);
-        else if(d===1) buckets.tomorrow.push(i);
-        else if(d<=6) buckets.week.push(i);
-        else buckets.later.push(i);
-      });
+      var buckets = bucketByDate(pending, function(i){return i.dueDate;}, function(i){return i.status==="done";});
 
       if(pending.length === 0){
         html = emptyStateHtml("You're all caught up", "No pending deadlines match this view.");
@@ -1855,6 +2051,31 @@
 
   function closeItemDialog(){ document.getElementById("itemDialog").close(); }
 
+  function populateSessionCourseSelect(selectedId){
+    var sel = document.getElementById("ss-course");
+    sel.innerHTML = '<option value="">No course</option>' + state.courses.map(function(c){
+      return '<option value="'+c.id+'" '+(c.id===selectedId?'selected':'')+'>'+escapeHtml(c.name)+'</option>';
+    }).join("");
+  }
+
+  function openSessionDialog(session, forcedCourseId){
+    state.editingSessionId = session ? session.id : null;
+    document.getElementById("sessionDlgTitle").textContent = session ? "Edit study session" : "Plan study session";
+    document.getElementById("sessionDeleteBtn").hidden = !session;
+    var courseSel = document.getElementById("ss-course");
+    populateSessionCourseSelect(session ? (session.courseId||"") : (forcedCourseId || ""));
+    courseSel.disabled = !session && !!forcedCourseId;
+    document.getElementById("ss-title").value = session ? session.title : "";
+    document.getElementById("ss-date").value = session ? session.date : (state.dayFilter || todayStr());
+    document.getElementById("ss-start").value = session ? (session.startTime||"") : "";
+    document.getElementById("ss-end").value = session ? (session.endTime||"") : "";
+    document.getElementById("ss-notes").value = session ? (session.notes||"") : "";
+    document.getElementById("sessionDialog").showModal();
+    document.getElementById("ss-title").focus();
+  }
+
+  function closeSessionDialog(){ document.getElementById("sessionDialog").close(); }
+
   function openCourseDialog(course){
     state.editingCourseId = course ? course.id : null;
     document.getElementById("courseDlgTitle").textContent = course ? "Edit course" : "Add course";
@@ -1869,7 +2090,11 @@
     var hint = document.getElementById("courseItemsHint");
     if(course){
       var n = state.items.filter(function(i){return i.courseId===course.id;}).length;
-      if(n>0){ hint.hidden=false; hint.textContent = "Deleting this course also deletes its "+n+" tracked item"+(n===1?"":"s")+"."; }
+      var sn = state.sessions.filter(function(s){return s.courseId===course.id;}).length;
+      var msgs = [];
+      if(n>0) msgs.push("deletes its "+n+" tracked item"+(n===1?"":"s"));
+      if(sn>0) msgs.push("unlinks its "+sn+" study session"+(sn===1?"":"s")+" (they stay, without a course)");
+      if(msgs.length){ hint.hidden=false; hint.textContent = "Deleting this course also "+msgs.join(" and ")+"."; }
       else hint.hidden = true;
     }else hint.hidden = true;
     document.getElementById("courseDialog").showModal();
@@ -2043,6 +2268,12 @@
   document.getElementById("nowRibbon").addEventListener("click", function(e){
     var goCourse = e.target.closest("[data-goto-course]");
     if(goCourse){ state.courseFilter = goCourse.dataset.gotoCourse; state.dayFilter = null; render(); return; }
+    var goSession = e.target.closest("[data-goto-session]");
+    if(goSession){
+      var sess = state.sessions.find(function(s){ return s.id === goSession.dataset.gotoSession; });
+      if(sess) openSessionDialog(sess);
+      return;
+    }
     var goItem = e.target.closest("[data-goto-item]");
     if(goItem){
       var it = state.items.find(function(i){ return i.id === goItem.dataset.gotoItem; });
@@ -2057,6 +2288,7 @@
   /* ---------- events ---------- */
 
   document.getElementById("addItemBtn").addEventListener("click", function(){ openItemDialog(null, state.courseFilter); });
+  document.getElementById("addSessionBtn").addEventListener("click", function(){ openSessionDialog(null, state.courseFilter); });
   document.getElementById("addCourseBtn").addEventListener("click", function(){ openCourseDialog(null); });
   document.getElementById("exportBtn").addEventListener("click", exportData);
   document.getElementById("importBtn").addEventListener("click", function(){ document.getElementById("importFile").click(); });
@@ -2067,6 +2299,31 @@
   });
   document.getElementById("itemCancelBtn").addEventListener("click", closeItemDialog);
   document.getElementById("courseCancelBtn").addEventListener("click", closeCourseDialog);
+  document.getElementById("sessionCancelBtn").addEventListener("click", closeSessionDialog);
+
+  document.getElementById("sessionForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var id = state.editingSessionId || genId();
+    var existing = state.sessions.find(function(s){return s.id===id;});
+    var session = {
+      id: id,
+      courseId: document.getElementById("ss-course").value || null,
+      title: document.getElementById("ss-title").value.trim(),
+      date: document.getElementById("ss-date").value,
+      startTime: document.getElementById("ss-start").value,
+      endTime: document.getElementById("ss-end").value,
+      notes: document.getElementById("ss-notes").value.trim(),
+      status: existing ? existing.status : "planned"
+    };
+    if(!session.title || !session.date){ return; }
+    persistSession(session);
+    closeSessionDialog();
+  });
+
+  document.getElementById("sessionDeleteBtn").addEventListener("click", function(){
+    if(state.editingSessionId){ deleteSession(state.editingSessionId); }
+    closeSessionDialog();
+  });
 
   document.getElementById("itemForm").addEventListener("submit", function(e){
     e.preventDefault();
@@ -2192,6 +2449,12 @@
       render();
       return;
     }
+    var sessionChip = e.target.closest("[data-session]");
+    if(sessionChip){
+      var sess = state.sessions.find(function(s){ return s.id === sessionChip.dataset.session; });
+      if(sess) openSessionDialog(sess);
+      return;
+    }
     var chip = e.target.closest("[data-item]");
     if(chip){
       var it = state.items.find(function(i){ return i.id === chip.dataset.item; });
@@ -2207,6 +2470,12 @@
   });
 
   document.getElementById("listArea").addEventListener("click", function(e){
+    var toggleSession = e.target.closest("[data-toggle-session]");
+    if(toggleSession){
+      var session = state.sessions.find(function(s){return s.id===toggleSession.dataset.toggleSession;});
+      if(session) toggleSessionStatus(session);
+      return;
+    }
     var toggle = e.target.closest("[data-toggle]");
     if(toggle){
       var item = state.items.find(function(i){return i.id===toggle.dataset.toggle;});
@@ -2214,10 +2483,14 @@
       return;
     }
     var card = e.target.closest(".item");
-    if(card){
-      var it = state.items.find(function(i){return i.id===card.dataset.item;});
-      if(it) openItemDialog(it);
+    if(!card) return;
+    if(card.dataset.session){
+      var sess = state.sessions.find(function(s){return s.id===card.dataset.session;});
+      if(sess) openSessionDialog(sess);
+      return;
     }
+    var it = state.items.find(function(i){return i.id===card.dataset.item;});
+    if(it) openItemDialog(it);
   });
 
   /* ---------- boot ---------- */

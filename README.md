@@ -10,6 +10,7 @@ Most of what matters during a semester boils down to one question: *what do I ne
 
 - **Courses** — name, code, color, instructor, and a numbered list of materials & links.
 - **Deadlines & exams** — assignments, exams, quizzes, projects, and readings, each with a due date/time and notes. Overdue and due-soon items are called out automatically.
+- **Study sessions** — plan a block of time to study, with or without tying it to a course. Shows up on the week calendar, in its own "Study" tab, and in the "right now" strip when one's in progress or coming up.
 - **Weekly schedule** — give each course recurring lesson blocks (lectures, exercise classes, seminars — whatever labels your program uses) and see them laid out in a real weekly time grid.
 - **Semester setup** — enter your term's start/end dates, exam period, and breaks once; the app then knows what week it is, and quietly skips lessons during declared breaks.
 - **Month & week calendar views**, with a course-specific view when you drill into one course.
