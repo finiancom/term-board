@@ -1,0 +1,2229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A free, local-first semester organizer: courses, deadlines, exams, a weekly class schedule, and a calendar — all stored in your own browser.">
+<title>Term Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* ---------- tokens ---------- */
+  :root{
+    --bg:#F3F4F8;
+    --surface:#FFFFFF;
+    --surface-2:#EAEDF3;
+    --ink:#1C2130;
+    --ink-soft:#656C7E;
+    --ink-faint:#9298A8;
+    --line:#E1E4EC;
+    --line-strong:#CBD0DC;
+
+    --accent:#2F5D50;
+    --accent-ink:#FFFFFF;
+    --accent-soft:#DCEAE4;
+    --accent-soft-ink:#1F5245;
+
+    --danger:#B23A31;
+    --danger-soft:#F7E1DE;
+    --danger-ink:#7A241D;
+    --warning:#93601F;
+    --warning-soft:#F5E6D0;
+    --warning-ink:#6E4610;
+    --good:#316B4E;
+    --good-soft:#DEEEE5;
+
+    --shadow:0 1px 2px rgba(28,33,48,.06), 0 8px 24px -12px rgba(28,33,48,.16);
+
+    --course-teal-bg:#DCEEEA;    --course-teal-fg:#1F6F63;
+    --course-indigo-bg:#E1E4F7;  --course-indigo-fg:#3B4BA8;
+    --course-gold-bg:#F2E4B8;    --course-gold-fg:#8A6D1D;
+    --course-rose-bg:#F7E0E3;    --course-rose-fg:#A23B55;
+    --course-moss-bg:#E3ECD8;    --course-moss-fg:#4F7A3D;
+    --course-plum-bg:#EBE0F2;    --course-plum-fg:#6C3F94;
+    --course-slate-bg:#E4E7ED;   --course-slate-fg:#445066;
+    --course-clay-bg:#F1E0D6;    --course-clay-fg:#9C5A34;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14171F;
+      --surface:#1B1F2A;
+      --surface-2:#242A38;
+      --ink:#E7E9F0;
+      --ink-soft:#9BA1B4;
+      --ink-faint:#6B7180;
+      --line:#2B3040;
+      --line-strong:#3A4054;
+
+      --accent:#7BC7AC;
+      --accent-ink:#0E1712;
+      --accent-soft:#1E3830;
+      --accent-soft-ink:#9FDBC4;
+
+      --danger:#E6897E;
+      --danger-soft:#3A2220;
+      --danger-ink:#F3B3AA;
+      --warning:#E3AD62;
+      --warning-soft:#3A2E1B;
+      --warning-ink:#F0C68C;
+      --good:#83CBA6;
+      --good-soft:#1D3327;
+
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+
+      --course-teal-bg:#143430;    --course-teal-fg:#6FCBB8;
+      --course-indigo-bg:#232A4D;  --course-indigo-fg:#9AA6F2;
+      --course-gold-bg:#3A2F12;    --course-gold-fg:#E8C767;
+      --course-rose-bg:#3A2026;    --course-rose-fg:#F0A6B4;
+      --course-moss-bg:#253018;    --course-moss-fg:#A8D08A;
+      --course-plum-bg:#2C2038;    --course-plum-fg:#C9A3E8;
+      --course-slate-bg:#262B36;   --course-slate-fg:#AAB4C7;
+      --course-clay-bg:#33241A;    --course-clay-fg:#E3A57C;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14171F;
+    --surface:#1B1F2A;
+    --surface-2:#242A38;
+    --ink:#E7E9F0;
+    --ink-soft:#9BA1B4;
+    --ink-faint:#6B7180;
+    --line:#2B3040;
+    --line-strong:#3A4054;
+
+    --accent:#7BC7AC;
+    --accent-ink:#0E1712;
+    --accent-soft:#1E3830;
+    --accent-soft-ink:#9FDBC4;
+
+    --danger:#E6897E;
+    --danger-soft:#3A2220;
+    --danger-ink:#F3B3AA;
+    --warning:#E3AD62;
+    --warning-soft:#3A2E1B;
+    --warning-ink:#F0C68C;
+    --good:#83CBA6;
+    --good-soft:#1D3327;
+
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+
+    --course-teal-bg:#143430;    --course-teal-fg:#6FCBB8;
+    --course-indigo-bg:#232A4D;  --course-indigo-fg:#9AA6F2;
+    --course-gold-bg:#3A2F12;    --course-gold-fg:#E8C767;
+    --course-rose-bg:#3A2026;    --course-rose-fg:#F0A6B4;
+    --course-moss-bg:#253018;    --course-moss-fg:#A8D08A;
+    --course-plum-bg:#2C2038;    --course-plum-fg:#C9A3E8;
+    --course-slate-bg:#262B36;   --course-slate-fg:#AAB4C7;
+    --course-clay-bg:#33241A;    --course-clay-fg:#E3A57C;
+  }
+
+  *{box-sizing:border-box;}
+  html{color-scheme:light dark;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:"Fraunces", Georgia, serif; text-wrap:balance; margin:0;}
+  .mono{font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums;}
+  a{color:var(--accent);}
+  button{font-family:inherit;}
+  ::selection{background:var(--accent-soft);}
+
+  /* ---------- shell ---------- */
+  .shell{
+    max-width:1180px;
+    margin:0 auto;
+    padding:20px 20px 64px;
+    display:grid;
+    grid-template-columns:264px 1fr;
+    gap:24px;
+    align-items:start;
+  }
+  @media (max-width:860px){
+    .shell{grid-template-columns:1fr; padding:16px 16px 48px;}
+  }
+
+  .topbar{
+    grid-column:1/-1;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    padding:4px 2px 4px;
+    margin-bottom:4px;
+    flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand h1{font-size:1.5rem; font-weight:600; letter-spacing:-.01em;}
+  .brand .tag{color:var(--ink-faint); font-size:.8rem;}
+  .today-pill{
+    font-size:.78rem;
+    color:var(--ink-soft);
+    font-family:"IBM Plex Mono", monospace;
+    padding:5px 10px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:var(--surface);
+  }
+
+  /* ---------- sidebar ---------- */
+  .sidebar{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    position:sticky;
+    top:20px;
+  }
+  @media (max-width:860px){ .sidebar{position:static;} }
+
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+  }
+  .panel h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-faint); font-family:"IBM Plex Sans"; font-weight:600; margin-bottom:12px;}
+
+  .btn{
+    appearance:none;
+    border:1px solid var(--line-strong);
+    background:var(--surface);
+    color:var(--ink);
+    border-radius:9px;
+    padding:9px 14px;
+    font-size:.88rem;
+    font-weight:500;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    transition:background .12s, border-color .12s;
+  }
+  .btn:hover{background:var(--surface-2);}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  .btn-primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  .btn-primary:hover{filter:brightness(1.06);}
+  .btn-full{width:100%;}
+  .btn-ghost{border-color:transparent; background:transparent;}
+  .btn-ghost:hover{background:var(--surface-2);}
+  .btn-danger-text{color:var(--danger);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+
+  .course-list{display:flex; flex-direction:column; gap:4px; margin-bottom:12px;}
+  .course-row{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    width:100%;
+    border:1px solid transparent;
+    background:transparent;
+    border-radius:9px;
+    padding:7px 8px;
+    cursor:pointer;
+    text-align:left;
+    color:var(--ink);
+    font-size:.86rem;
+  }
+  .course-row:hover{background:var(--surface-2);}
+  .course-row.active{border-color:var(--line-strong); background:var(--surface-2);}
+  .course-dot{width:10px; height:10px; border-radius:50%; flex:none;}
+  .course-row .name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .course-row .count{font-family:"IBM Plex Mono"; font-size:.75rem; color:var(--ink-faint);}
+  .course-row.all.active{background:var(--accent-soft); border-color:transparent;}
+  .course-edit{
+    flex:none; border:none; background:transparent; color:var(--ink-faint);
+    font-size:.72rem; padding:2px 5px; border-radius:5px; cursor:pointer;
+  }
+  .course-edit:hover{background:var(--surface); color:var(--ink);}
+  .empty-note{color:var(--ink-faint); font-size:.82rem; padding:4px 2px 10px;}
+  .data-panel .data-actions{display:flex; gap:8px; margin-bottom:10px;}
+  .data-panel .data-actions .btn{flex:1; padding:7px 8px; font-size:.8rem;}
+  .data-panel .fs-note{margin:0;}
+
+  .course-color-teal .course-dot,.swatch-teal{background:var(--course-teal-fg);}
+  .course-color-indigo .course-dot,.swatch-indigo{background:var(--course-indigo-fg);}
+  .course-color-gold .course-dot,.swatch-gold{background:var(--course-gold-fg);}
+  .course-color-rose .course-dot,.swatch-rose{background:var(--course-rose-fg);}
+  .course-color-moss .course-dot,.swatch-moss{background:var(--course-moss-fg);}
+  .course-color-plum .course-dot,.swatch-plum{background:var(--course-plum-fg);}
+  .course-color-slate .course-dot,.swatch-slate{background:var(--course-slate-fg);}
+  .course-color-clay .course-dot,.swatch-clay{background:var(--course-clay-fg);}
+
+  .badge{
+    display:inline-flex; align-items:center;
+    font-family:"IBM Plex Mono"; font-size:.66rem; font-weight:600;
+    letter-spacing:.04em; text-transform:uppercase;
+    padding:3px 7px; border-radius:5px; flex:none;
+  }
+  .course-color-teal .badge-course{background:var(--course-teal-bg); color:var(--course-teal-fg);}
+  .course-color-indigo .badge-course{background:var(--course-indigo-bg); color:var(--course-indigo-fg);}
+  .course-color-gold .badge-course{background:var(--course-gold-bg); color:var(--course-gold-fg);}
+  .course-color-rose .badge-course{background:var(--course-rose-bg); color:var(--course-rose-fg);}
+  .course-color-moss .badge-course{background:var(--course-moss-bg); color:var(--course-moss-fg);}
+  .course-color-plum .badge-course{background:var(--course-plum-bg); color:var(--course-plum-fg);}
+  .course-color-slate .badge-course{background:var(--course-slate-bg); color:var(--course-slate-fg);}
+  .course-color-clay .badge-course{background:var(--course-clay-bg); color:var(--course-clay-fg);}
+
+  /* week view: course color applied directly to the chip/block */
+  .week-chip.course-color-teal, .week-block.course-color-teal{background:var(--course-teal-bg); color:var(--course-teal-fg);}
+  .week-chip.course-color-indigo, .week-block.course-color-indigo{background:var(--course-indigo-bg); color:var(--course-indigo-fg);}
+  .week-chip.course-color-gold, .week-block.course-color-gold{background:var(--course-gold-bg); color:var(--course-gold-fg);}
+  .week-chip.course-color-rose, .week-block.course-color-rose{background:var(--course-rose-bg); color:var(--course-rose-fg);}
+  .week-chip.course-color-moss, .week-block.course-color-moss{background:var(--course-moss-bg); color:var(--course-moss-fg);}
+  .week-chip.course-color-plum, .week-block.course-color-plum{background:var(--course-plum-bg); color:var(--course-plum-fg);}
+  .week-chip.course-color-slate, .week-block.course-color-slate{background:var(--course-slate-bg); color:var(--course-slate-fg);}
+  .week-chip.course-color-clay, .week-block.course-color-clay{background:var(--course-clay-bg); color:var(--course-clay-fg);}
+
+  .badge-type-exam{background:var(--danger-soft); color:var(--danger-ink, var(--danger));}
+  .badge-type-assignment{background:var(--accent-soft); color:var(--accent-soft-ink, var(--accent));}
+  .badge-type-quiz{background:var(--warning-soft); color:var(--warning-ink, var(--warning));}
+  .badge-type-project{background:var(--course-plum-bg); color:var(--course-plum-fg);}
+  .badge-type-reading{background:var(--course-slate-bg); color:var(--course-slate-fg);}
+  .badge-type-other{background:var(--surface-2); color:var(--ink-soft);}
+
+  /* ---------- main ---------- */
+  .main{display:flex; flex-direction:column; gap:18px; min-width:0;}
+
+  .now-ribbon{
+    display:flex; align-items:stretch; background:var(--surface); border:1px solid var(--line);
+    border-radius:12px; overflow:hidden;
+  }
+  .now-seg{
+    flex:1; padding:10px 16px; display:flex; flex-direction:column; gap:2px; min-width:0; cursor:pointer;
+  }
+  .now-seg:hover{background:var(--surface-2);}
+  .now-seg + .now-seg{border-left:1px solid var(--line);}
+  .now-seg .now-label{font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint);}
+  .now-seg .now-value{font-size:.92rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .now-seg .now-sub{font-size:.78rem; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .now-seg.active{background:var(--accent-soft);}
+  .now-seg.active:hover{filter:brightness(1.03);}
+  .now-seg.active .now-label, .now-seg.active .now-value, .now-seg.active .now-sub{color:var(--accent-soft-ink);}
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+  }
+  @media (max-width:640px){ .stats{grid-template-columns:repeat(2,1fr);} }
+  .stat{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 14px;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .stat .n{font-family:"Fraunces"; font-size:1.9rem; font-weight:600; line-height:1;}
+  .stat .l{font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); margin-top:4px;}
+  .stat.warn .n{color:var(--danger);}
+  .stat.next{background:var(--accent-soft); border-color:transparent;}
+  .stat.next .n{color:var(--accent-soft-ink);}
+  .stat.next .l{color:var(--accent-soft-ink); opacity:.75;}
+  .stat .sub{font-size:.74rem; color:var(--ink-soft); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .stat.next .sub{color:var(--accent-soft-ink); opacity:.85;}
+
+  .toolbar{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  .tabs{display:flex; gap:4px; background:var(--surface-2); padding:3px; border-radius:10px;}
+  .tab{
+    border:none; background:transparent; color:var(--ink-soft);
+    font-size:.83rem; font-weight:500; padding:6px 12px; border-radius:8px; cursor:pointer;
+  }
+  .tab.active{background:var(--surface); color:var(--ink); box-shadow:var(--shadow);}
+
+  .group{display:flex; flex-direction:column; gap:8px;}
+  .group-title{
+    font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; font-weight:600;
+    color:var(--ink-faint); padding:0 2px; display:flex; align-items:center; gap:8px;
+  }
+  .group-title.od{color:var(--danger);}
+  .group-title .line{flex:1; height:1px; background:var(--line);}
+
+  .item{
+    display:flex; align-items:flex-start; gap:12px;
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; cursor:pointer;
+  }
+  .item:hover{border-color:var(--line-strong);}
+  .item.done{opacity:.6;}
+  .item.overdue{border-left:3px solid var(--danger);}
+  .check{
+    width:20px; height:20px; border-radius:6px; border:1.5px solid var(--line-strong);
+    background:var(--surface); flex:none; margin-top:1px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:var(--accent-ink);
+  }
+  .check.checked{background:var(--good); border-color:var(--good);}
+  .item-main{flex:1; min-width:0;}
+  .item-top{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:3px;}
+  .item-title{font-weight:500; font-size:.94rem;}
+  .item.done .item-title{text-decoration:line-through; color:var(--ink-soft);}
+  .item-meta{display:flex; gap:8px; flex-wrap:wrap; font-size:.78rem; color:var(--ink-soft); align-items:center;}
+  .item-notes{font-size:.8rem; color:var(--ink-soft); margin-top:4px; max-width:60ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .due-when{font-family:"IBM Plex Mono"; font-size:.78rem;}
+  .due-when.od{color:var(--danger); font-weight:600;}
+  .due-when.soon{color:var(--warning); font-weight:600;}
+
+  .empty-state{
+    background:var(--surface); border:1px dashed var(--line-strong); border-radius:14px;
+    padding:40px 24px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .empty-state h3{font-size:1.15rem;}
+  .empty-state p{color:var(--ink-soft); max-width:42ch; margin:0;}
+
+  /* ---------- dialogs ---------- */
+  dialog{
+    border:none; border-radius:16px; padding:0; background:var(--surface); color:var(--ink);
+    width:min(480px, 92vw); box-shadow:var(--shadow);
+  }
+  dialog::backdrop{background:rgba(15,17,23,.45);}
+  .dlg-body{padding:20px 22px 22px;}
+  .dlg-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+  .dlg-head h2{font-size:1.15rem; font-weight:600; text-transform:none; letter-spacing:0; color:var(--ink);}
+  .field{display:flex; flex-direction:column; gap:5px; margin-bottom:14px;}
+  .field-row{display:flex; gap:12px;}
+  .field-row .field{flex:1;}
+  label{font-size:.78rem; color:var(--ink-soft); font-weight:500;}
+  input[type=text], input[type=date], input[type=time], select, textarea{
+    border:1px solid var(--line-strong); background:var(--bg); color:var(--ink);
+    border-radius:8px; padding:8px 10px; font-size:.88rem; font-family:inherit; width:100%;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  select:disabled{opacity:.75; cursor:not-allowed;}
+  textarea{resize:vertical; min-height:64px;}
+  .swatches{display:flex; gap:8px; flex-wrap:wrap;}
+  .swatch{
+    width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0;
+  }
+  .swatch.selected{border-color:var(--ink);}
+  .dlg-actions{display:flex; justify-content:space-between; align-items:center; margin-top:18px; gap:10px;}
+  .dlg-actions .right{display:flex; gap:8px;}
+  .hint{font-size:.74rem; color:var(--ink-faint); margin-top:-6px; margin-bottom:12px;}
+  .banner{
+    grid-column:1/-1; font-size:.8rem; color:var(--warning-ink); background:var(--warning-soft);
+    border-radius:10px; padding:8px 14px;
+  }
+  [hidden]{display:none !important;}
+
+  /* ---------- calendar ---------- */
+  .cal-panel{padding:14px 16px 16px;}
+  .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px;}
+  .cal-title{font-size:1.05rem; font-weight:600; font-family:"Fraunces";}
+  .cal-nav{display:flex; align-items:center; gap:4px;}
+  .cal-nav-btn{
+    border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft);
+    width:28px; height:28px; border-radius:8px; cursor:pointer; font-size:.85rem;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .cal-nav-btn:hover{background:var(--surface-2); color:var(--ink);}
+  .cal-today-btn{font-size:.74rem; padding:5px 10px;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px;}
+  .cal-weekday{
+    text-align:center; font-size:.66rem; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--ink-faint); padding:2px 0 6px;
+  }
+  .cal-cell{
+    aspect-ratio:1/0.68; border-radius:9px; border:1px solid transparent;
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    gap:3px; padding:5px 2px 0; font-size:.78rem; color:var(--ink); cursor:default;
+    background:transparent; min-width:0; position:relative;
+  }
+  .cal-cell.pad{visibility:hidden;}
+  .cal-cell.has-items{cursor:pointer;}
+  .cal-cell.has-items:hover{background:var(--surface-2); border-color:var(--line);}
+  .cal-cell.today{border-color:var(--accent); font-weight:600;}
+  .cal-cell.selected{background:var(--accent-soft); border-color:var(--accent);}
+  .cal-cell.exam-day{box-shadow:inset 0 0 0 1.5px var(--danger);}
+  .cal-daynum{line-height:1;}
+  .cal-dots{display:flex; gap:2px; align-items:center; flex-wrap:wrap; justify-content:center; min-height:6px;}
+  .cal-dot{width:5px; height:5px; border-radius:50%; flex:none;}
+  .cal-more{font-size:.6rem; color:var(--ink-faint); font-family:"IBM Plex Mono";}
+
+  .view-toggle{margin-right:2px;}
+  .week-badge{
+    font-family:"IBM Plex Mono"; font-size:.66rem; font-weight:600; color:var(--accent-soft-ink);
+    background:var(--accent-soft); border-radius:999px; padding:2px 8px; margin-left:8px; vertical-align:middle;
+  }
+
+  .week-scroll{overflow-x:auto;}
+  .week-wrap{border:1px solid var(--line); border-radius:10px; overflow:hidden; min-width:640px;}
+  .week-row{display:grid; grid-template-columns:46px repeat(7,1fr);}
+  .week-row-head{border-bottom:1px solid var(--line); background:var(--surface-2);}
+  .week-day-head{
+    text-align:center; font-size:.74rem; font-weight:600; color:var(--ink-soft);
+    padding:6px 2px; border-left:1px solid var(--line);
+  }
+  .week-day-head .wd-num{font-family:"IBM Plex Mono"; color:var(--ink-faint); font-weight:400;}
+  .week-day-head.today{color:var(--accent);}
+  .week-day-head.today .wd-num{color:var(--accent); font-weight:700;}
+  .week-row-allday{border-bottom:1px solid var(--line); min-height:6px;}
+  .week-allday-cell{
+    border-left:1px solid var(--line); padding:2px; display:flex; flex-direction:column; gap:2px;
+  }
+  .week-chip{
+    font-size:.66rem; padding:2px 5px; border-radius:5px; cursor:pointer; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; line-height:1.4;
+  }
+  .week-chip.exam{box-shadow:inset 0 0 0 1.3px var(--danger);}
+  .week-row-body{position:relative;}
+  .week-time-col{position:relative; border-right:none;}
+  .week-time-label{
+    position:absolute; right:6px; transform:translateY(-50%); font-size:.6rem; color:var(--ink-faint);
+    font-family:"IBM Plex Mono"; white-space:nowrap;
+  }
+  .week-day-body{
+    position:relative; border-left:1px solid var(--line);
+    background-image:repeating-linear-gradient(to bottom, var(--line) 0, var(--line) 1px, transparent 1px, transparent 52px);
+  }
+  .week-day-body.non-teaching{background-color:var(--surface-2);}
+  .week-block{
+    position:absolute; left:2px; right:2px; border-radius:6px; padding:3px 5px;
+    font-size:.68rem; line-height:1.3; overflow:hidden; cursor:default;
+  }
+  .week-block-code{font-family:"IBM Plex Mono"; font-weight:700; margin-right:2px;}
+  .week-block-room{display:block; font-size:.62rem; opacity:.8;}
+
+  .day-chip{
+    display:flex; align-items:center; gap:6px; font-size:.8rem; color:var(--accent-soft-ink);
+    background:var(--accent-soft); border-radius:999px; padding:5px 6px 5px 12px;
+  }
+  .day-chip button{
+    border:none; background:rgba(0,0,0,.08); color:inherit; width:18px; height:18px; border-radius:50%;
+    cursor:pointer; font-size:.7rem; line-height:1; display:flex; align-items:center; justify-content:center;
+  }
+
+  /* ---------- course header ---------- */
+  .course-header{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .course-header .back{
+    align-self:flex-start; border:none; background:none; color:var(--ink-soft); font-size:.78rem;
+    cursor:pointer; padding:0; display:flex; align-items:center; gap:4px;
+  }
+  .course-header .back:hover{color:var(--ink);}
+  .course-header-top{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  .course-header-id{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .course-header h2{font-size:1.3rem;}
+  .course-header .code{font-family:"IBM Plex Mono"; font-size:.78rem; color:var(--ink-soft);}
+  .course-header .instructor{font-size:.82rem; color:var(--ink-soft);}
+
+  .course-header-body{display:flex; flex-wrap:wrap; gap:22px; margin-top:2px;}
+  .course-panel-col{flex:1 1 260px; min-width:220px;}
+  .section-label{
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.07em; font-weight:600;
+    color:var(--ink-faint); margin-bottom:8px;
+  }
+
+  .mat-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px;}
+  .mat-item{display:flex; align-items:center; gap:9px; font-size:.85rem;}
+  .mat-num{
+    flex:none; width:19px; height:19px; border-radius:50%; font-family:"IBM Plex Mono"; font-size:.66rem;
+    font-weight:600; display:flex; align-items:center; justify-content:center; background:var(--surface-2); color:var(--ink-soft);
+  }
+  .course-color-teal .mat-num{background:var(--course-teal-bg); color:var(--course-teal-fg);}
+  .course-color-indigo .mat-num{background:var(--course-indigo-bg); color:var(--course-indigo-fg);}
+  .course-color-gold .mat-num{background:var(--course-gold-bg); color:var(--course-gold-fg);}
+  .course-color-rose .mat-num{background:var(--course-rose-bg); color:var(--course-rose-fg);}
+  .course-color-moss .mat-num{background:var(--course-moss-bg); color:var(--course-moss-fg);}
+  .course-color-plum .mat-num{background:var(--course-plum-bg); color:var(--course-plum-fg);}
+  .course-color-slate .mat-num{background:var(--course-slate-bg); color:var(--course-slate-fg);}
+  .course-color-clay .mat-num{background:var(--course-clay-bg); color:var(--course-clay-fg);}
+  .mat-label{color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .mat-item a.mat-label{color:var(--ink);}
+  .mat-open{
+    flex:none; margin-left:auto; font-size:.72rem; color:var(--accent); text-decoration:none;
+    border:1px solid var(--line); border-radius:6px; padding:2px 7px; white-space:nowrap;
+  }
+  .mat-open:hover{background:var(--surface-2);}
+  .mat-empty{font-size:.82rem; color:var(--ink-faint);}
+
+  /* materials editor (dialog) */
+  .materials-editor{display:flex; flex-direction:column; gap:7px;}
+  .material-row{display:flex; gap:7px; align-items:center;}
+  .material-row input{flex:1;}
+  .material-row input.mat-url-input{flex:1.2;}
+  .mat-remove{
+    flex:none; width:26px; height:26px; border-radius:7px; border:1px solid var(--line-strong);
+    background:var(--surface); color:var(--ink-soft); cursor:pointer; font-size:.8rem;
+  }
+  .mat-remove:hover{background:var(--surface-2); color:var(--danger);}
+
+  .schedule-editor{display:flex; flex-direction:column; gap:7px;}
+  .sched-row{display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
+  .sched-row .sched-code{flex:0 0 52px; text-align:center; text-transform:uppercase;}
+  .sched-row .sched-weekday{flex:1.1; min-width:84px;}
+  .sched-row .sched-start, .sched-row .sched-end{flex:0.85; min-width:76px;}
+  .sched-row .sched-room{flex:1.2; min-width:90px;}
+
+  .breaks-editor{display:flex; flex-direction:column; gap:7px;}
+  .break-row{display:flex; gap:7px; align-items:center;}
+  .break-row .break-label{flex:1.3;}
+  .break-row input[type=date]{flex:1;}
+
+  /* term panel */
+  .term-empty p{font-size:.82rem; color:var(--ink-soft); margin:0 0 10px;}
+  .term-name{font-family:"Fraunces"; font-size:1.05rem; font-weight:600;}
+  .term-inst{font-size:.78rem; color:var(--ink-faint); margin-bottom:8px;}
+  .term-status{
+    display:inline-flex; align-items:center; font-size:.76rem; font-weight:600;
+    padding:4px 10px; border-radius:999px; margin-bottom:8px; font-family:"IBM Plex Mono";
+  }
+  .term-status.term{background:var(--accent-soft); color:var(--accent-soft-ink);}
+  .term-status.break{background:var(--warning-soft); color:var(--warning-ink);}
+  .term-status.exam{background:var(--danger-soft); color:var(--danger-ink);}
+  .term-status.before, .term-status.after{background:var(--surface-2); color:var(--ink-soft);}
+  .term-edit-link{border:none; background:none; color:var(--ink-faint); font-size:.76rem; cursor:pointer; padding:0; display:block;}
+  .term-edit-link:hover{color:var(--ink);}
+
+  /* local folder */
+  .folder-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;}
+  .folder-actions{display:flex; gap:6px;}
+  .fs-btn{
+    font-size:.72rem; padding:4px 9px; border-radius:7px; border:1px solid var(--line-strong);
+    background:var(--surface); color:var(--ink-soft); cursor:pointer;
+  }
+  .fs-btn:hover{background:var(--surface-2); color:var(--ink);}
+  .fs-note{font-size:.8rem; color:var(--ink-faint); line-height:1.5;}
+  .breadcrumb{display:flex; flex-wrap:wrap; gap:4px; font-size:.76rem; color:var(--ink-soft); margin-bottom:7px;}
+  .breadcrumb button{border:none; background:none; color:var(--ink-soft); cursor:pointer; padding:0; font-size:.76rem;}
+  .breadcrumb button:hover{color:var(--accent); text-decoration:underline;}
+  .breadcrumb .sep{color:var(--ink-faint);}
+  .file-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; max-height:220px; overflow-y:auto;}
+  .file-row{
+    display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:7px; cursor:pointer; font-size:.83rem;
+  }
+  .file-row:hover{background:var(--surface-2);}
+  .file-badge{
+    flex:none; font-family:"IBM Plex Mono"; font-size:.6rem; font-weight:600; letter-spacing:.03em;
+    padding:2px 5px; border-radius:4px; background:var(--surface-2); color:var(--ink-faint); min-width:30px; text-align:center;
+  }
+  .file-row.dir .file-badge{background:var(--accent-soft); color:var(--accent-soft-ink);}
+  .file-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div class="shell" id="shell">
+  <div class="topbar">
+    <div class="brand">
+      <h1>Term Board</h1>
+      <span class="tag">your semester, tracked</span>
+    </div>
+    <div class="today-pill" id="todayPill"></div>
+  </div>
+  <div class="banner" id="banner" hidden></div>
+
+  <aside class="sidebar">
+    <div class="panel" id="termPanel"></div>
+    <div class="panel">
+      <h2>Courses</h2>
+      <div class="course-list" id="courseList"></div>
+      <button class="btn btn-full" id="addCourseBtn">+ Add course</button>
+    </div>
+    <button class="btn btn-primary btn-full" id="addItemBtn" style="padding:12px;">+ Add deadline / exam</button>
+    <div class="panel data-panel">
+      <h2>Data</h2>
+      <div class="data-actions">
+        <button class="btn" id="exportBtn">Export backup</button>
+        <button class="btn" id="importBtn">Import backup</button>
+        <input type="file" id="importFile" accept="application/json" hidden>
+      </div>
+      <p class="fs-note">Everything is saved in this browser only — nothing is sent anywhere. Export a backup before switching devices or browsers.</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="now-ribbon" id="nowRibbon"></div>
+
+    <section class="panel cal-panel" id="calPanel"></section>
+
+    <section class="stats" id="stats"></section>
+
+    <div id="courseHeader"></div>
+
+    <div class="toolbar">
+      <div class="tabs" id="tabs">
+        <button class="tab" data-tab="upcoming">Upcoming</button>
+        <button class="tab" data-tab="exams">Exams</button>
+        <button class="tab" data-tab="all">All</button>
+        <button class="tab" data-tab="done">Completed</button>
+      </div>
+      <div class="day-chip" id="dayChip" hidden></div>
+    </div>
+
+    <div id="listArea"></div>
+  </main>
+</div>
+
+<dialog id="itemDialog">
+  <form class="dlg-body" id="itemForm" method="dialog">
+    <div class="dlg-head">
+      <h2 id="itemDlgTitle">Add deadline</h2>
+    </div>
+    <div class="field">
+      <label for="f-title">Title</label>
+      <input type="text" id="f-title" required placeholder="e.g. Problem set 4">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="f-course">Course</label>
+        <select id="f-course" required></select>
+      </div>
+      <div class="field">
+        <label for="f-type">Type</label>
+        <select id="f-type">
+          <option value="assignment">Assignment</option>
+          <option value="exam">Exam</option>
+          <option value="quiz">Quiz</option>
+          <option value="project">Project</option>
+          <option value="reading">Reading</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="f-date">Due date</label>
+        <input type="date" id="f-date" required>
+      </div>
+      <div class="field">
+        <label for="f-time">Time (optional)</label>
+        <input type="time" id="f-time">
+      </div>
+    </div>
+    <div class="field">
+      <label for="f-notes">Notes</label>
+      <textarea id="f-notes" placeholder="Room number, chapters, weighting..."></textarea>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-ghost btn-danger-text" id="itemDeleteBtn" hidden>Delete</button>
+      <div class="right">
+        <button type="button" class="btn" id="itemCancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="itemSaveBtn">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="courseDialog">
+  <form class="dlg-body" id="courseForm" method="dialog">
+    <div class="dlg-head">
+      <h2 id="courseDlgTitle">Add course</h2>
+    </div>
+    <div class="field-row">
+      <div class="field" style="flex:2">
+        <label for="c-name">Course name</label>
+        <input type="text" id="c-name" required placeholder="e.g. Organic Chemistry II">
+      </div>
+      <div class="field" style="flex:1">
+        <label for="c-code">Code</label>
+        <input type="text" id="c-code" placeholder="CHEM 202">
+      </div>
+    </div>
+    <div class="field">
+      <label>Color</label>
+      <div class="swatches" id="colorSwatches"></div>
+    </div>
+    <div class="field">
+      <label for="c-instructor">Instructor (optional)</label>
+      <input type="text" id="c-instructor" placeholder="Prof. ...">
+    </div>
+    <div class="field">
+      <label>Weekly schedule</label>
+      <div class="schedule-editor" id="scheduleEditor"></div>
+      <button type="button" class="btn" id="addScheduleRow">+ Add recurring lesson</button>
+      <div class="hint">Common codes: V lecture · Ü exercises · G mixed · S seminar — or use your own.</div>
+    </div>
+    <div class="field">
+      <label>Materials &amp; links</label>
+      <div class="materials-editor" id="materialsEditor"></div>
+      <button type="button" class="btn" id="addMaterialRow">+ Add material</button>
+    </div>
+    <div class="hint" id="courseItemsHint" hidden></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-ghost btn-danger-text" id="courseDeleteBtn" hidden>Delete</button>
+      <div class="right">
+        <button type="button" class="btn" id="courseCancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="semesterDialog">
+  <form class="dlg-body" id="semesterForm" method="dialog">
+    <div class="dlg-head">
+      <h2>Set up your semester</h2>
+    </div>
+    <div class="field-row">
+      <div class="field" style="flex:1.3">
+        <label for="s-institution">University / institution (optional)</label>
+        <input type="text" id="s-institution" placeholder="e.g. ETH Zürich">
+      </div>
+      <div class="field">
+        <label for="s-term-name">Term name</label>
+        <input type="text" id="s-term-name" placeholder="e.g. Fall 2026" required>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="s-start">Term starts</label>
+        <input type="date" id="s-start" required>
+      </div>
+      <div class="field">
+        <label for="s-end">Term ends</label>
+        <input type="date" id="s-end" required>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="s-exam-start">Exam period starts (optional)</label>
+        <input type="date" id="s-exam-start">
+      </div>
+      <div class="field">
+        <label for="s-exam-end">Exam period ends (optional)</label>
+        <input type="date" id="s-exam-end">
+      </div>
+    </div>
+    <div class="field">
+      <label>Breaks (optional)</label>
+      <div class="breaks-editor" id="breaksEditor"></div>
+      <button type="button" class="btn" id="addBreakRow">+ Add break</button>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-ghost btn-danger-text" id="semesterClearBtn">Clear</button>
+      <div class="right">
+        <button type="button" class="btn" id="semesterCancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function(){
+  "use strict";
+
+  var COLORS = ["teal","indigo","gold","rose","moss","plum","slate","clay"];
+  var TYPE_LABELS = {assignment:"Assignment", exam:"Exam", quiz:"Quiz", project:"Project", reading:"Reading", other:"Other"};
+
+  var now = new Date();
+  var state = {
+    courses: [],
+    items: [],
+    tab: "upcoming",
+    courseFilter: null,
+    editingItemId: null,
+    editingCourseId: null,
+    calYear: now.getFullYear(),
+    calMonth: now.getMonth(),
+    dayFilter: null,
+    semester: null,
+    calView: "week",
+    weekAnchor: now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")
+  };
+
+  /* ---------- persistence ----------
+   * Term Board is local-first by design: everything lives in this
+   * browser's localStorage, so the same file works standalone, hosted
+   * on GitHub Pages, or opened as a Claude artifact — no account, no
+   * server. That means data doesn't cross devices on its own; Export /
+   * Import (see the Data panel in the sidebar) is the deliberate,
+   * user-driven way to move or back it up. */
+
+  function localKey(){ return "term-board-data-v1"; }
+
+  function loadLocal(){
+    try{
+      var raw = localStorage.getItem(localKey());
+      if(raw){
+        var parsed = JSON.parse(raw);
+        state.courses = parsed.courses || [];
+        state.items = parsed.items || [];
+        state.semester = parsed.semester || null;
+      }
+    }catch(e){ /* storage unavailable (private window, blocked) - render empty */ }
+  }
+
+  function saveLocal(){
+    try{
+      localStorage.setItem(localKey(), JSON.stringify({courses:state.courses, items:state.items, semester:state.semester}));
+    }catch(e){ showBanner("Your browser blocked saving (private window, or storage full) — changes may not persist."); }
+  }
+
+  function showBanner(text){
+    var b = document.getElementById("banner");
+    b.textContent = text;
+    b.hidden = false;
+  }
+
+  function genId(){
+    return "id" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  }
+
+  function initPersistence(){
+    loadLocal();
+    render();
+  }
+
+  function persistCourse(course){
+    var idx = state.courses.findIndex(function(c){return c.id===course.id;});
+    if(idx>=0) state.courses[idx]=course; else state.courses.push(course);
+    saveLocal(); render();
+  }
+
+  function deleteCourseAndItems(courseId){
+    state.courses = state.courses.filter(function(c){return c.id!==courseId;});
+    state.items = state.items.filter(function(i){return i.courseId!==courseId;});
+    saveLocal(); render();
+  }
+
+  function persistItem(item){
+    var idx = state.items.findIndex(function(x){return x.id===item.id;});
+    if(idx>=0) state.items[idx]=item; else state.items.push(item);
+    saveLocal(); render();
+  }
+
+  function deleteItem(itemId){
+    state.items = state.items.filter(function(i){return i.id!==itemId;});
+    saveLocal(); render();
+  }
+
+  function toggleItemStatus(item){
+    item.status = item.status === "done" ? "pending" : "done";
+    saveLocal(); render();
+  }
+
+  function persistSemester(sem){
+    state.semester = sem;
+    saveLocal(); render();
+  }
+
+  function exportData(){
+    var payload = {
+      exportedAt: new Date().toISOString(),
+      app: "term-board", version: 1,
+      courses: state.courses, items: state.items, semester: state.semester
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+    var stamp = todayStr();
+    var filename = "term-board-backup-"+stamp+".json";
+
+    // When this page is running inside a Claude Artifact viewer, a plain
+    // <a download> link is sandboxed and does nothing — the `downloads`
+    // capability is the supported way to hand the viewer a file. Outside
+    // that viewer (a plain file, GitHub Pages, any static host) there is
+    // no window.claude at all, so fall back to the classic blob-link click.
+    if(window.claude && typeof window.claude.use === "function"){
+      window.claude.use("downloads").then(function(downloads){
+        if(!downloads){ exportViaLink(blob, filename); return; }
+        downloads.save({filename: filename, data: blob}).then(function(){
+          showBanner("Backup ready — check your downloads.");
+        }).catch(function(err){
+          if(err && err.code === "declined") return;
+          exportViaLink(blob, filename);
+        });
+      }).catch(function(){ exportViaLink(blob, filename); });
+    }else{
+      exportViaLink(blob, filename);
+    }
+  }
+
+  function exportViaLink(blob, filename){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 30000);
+  }
+
+  function importDataFromFile(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var data = JSON.parse(reader.result);
+        if(!data || !Array.isArray(data.courses) || !Array.isArray(data.items)){
+          showBanner("That file doesn't look like a Term Board backup.");
+          return;
+        }
+        var merge = state.courses.length || state.items.length;
+        if(merge && !window.confirm("Replace your current courses and items with the ones in this file? Click Cancel to keep both (imported items are added alongside what you have).")){
+          var existingCourseIds = {}; state.courses.forEach(function(c){existingCourseIds[c.id]=true;});
+          data.courses.forEach(function(c){ if(!existingCourseIds[c.id]) state.courses.push(c); });
+          var existingItemIds = {}; state.items.forEach(function(i){existingItemIds[i.id]=true;});
+          data.items.forEach(function(i){ if(!existingItemIds[i.id]) state.items.push(i); });
+        }else{
+          state.courses = data.courses;
+          state.items = data.items;
+          if(data.semester) state.semester = data.semester;
+        }
+        saveLocal(); render();
+      }catch(e){
+        showBanner("Couldn't read that file — make sure it's a Term Board export.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------- local folder (File System Access API) ----------
+   * Lets a course point at a real folder on THIS device. The handle can
+   * only be stored in this browser's IndexedDB (it isn't JSON-serializable),
+   * so the connection is per-browser, not per-account — a cloud-backed
+   * version (Drive/Dropbox-style, synced everywhere) is a natural next step
+   * once this rolls out beyond a single user. */
+
+  var fsCache = {}; // courseId -> {status, rootHandle, currentHandle, path, entries, message}
+
+  function fsSupported(){ return typeof window.showDirectoryPicker === "function"; }
+
+  function idbOpen(){
+    return new Promise(function(resolve, reject){
+      var req = indexedDB.open("term-board-fs", 1);
+      req.onupgradeneeded = function(){ req.result.createObjectStore("folders", {keyPath:"courseId"}); };
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ reject(req.error); };
+    });
+  }
+  function idbGet(courseId){
+    return idbOpen().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction("folders", "readonly");
+        var r = tx.objectStore("folders").get(courseId);
+        r.onsuccess = function(){ resolve(r.result ? r.result.handle : null); };
+        r.onerror = function(){ reject(r.error); };
+      });
+    });
+  }
+  function idbSet(courseId, handle){
+    return idbOpen().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction("folders", "readwrite");
+        tx.objectStore("folders").put({courseId:courseId, handle:handle});
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+  function idbDelete(courseId){
+    return idbOpen().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction("folders", "readwrite");
+        tx.objectStore("folders").delete(courseId);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+
+  function ensureFolderState(courseId){
+    if(fsCache[courseId]) return; // already loaded, loading, or failed — don't refetch every render
+    if(!fsSupported()){ fsCache[courseId] = {status:"unsupported"}; return; }
+    fsCache[courseId] = {status:"loading"};
+    idbGet(courseId).then(function(handle){
+      if(!handle){ fsCache[courseId] = {status:"none"}; renderFolderPanelBody(courseId); return; }
+      handle.queryPermission({mode:"read"}).then(function(perm){
+        if(perm === "granted"){
+          fsCache[courseId] = {status:"ready", rootHandle:handle, path:[{name:handle.name, handle:handle}]};
+          listDir(courseId, handle);
+        }else{
+          fsCache[courseId] = {status:"permission-needed", rootHandle:handle};
+          renderFolderPanelBody(courseId);
+        }
+      });
+    }).catch(function(){
+      fsCache[courseId] = {status:"none"};
+      renderFolderPanelBody(courseId);
+    });
+  }
+
+  async function listDir(courseId, dirHandle){
+    var entries = [];
+    try{
+      for await (var handle of dirHandle.values()){
+        entries.push({name:handle.name, kind:handle.kind, handle:handle});
+      }
+    }catch(e){
+      fsCache[courseId] = {status:"error", message:"Could not read that folder — it may have been moved or removed."};
+      renderFolderPanelBody(courseId);
+      return;
+    }
+    entries.sort(function(a,b){
+      if(a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    var st = fsCache[courseId];
+    st.status = "ready";
+    st.currentHandle = dirHandle;
+    st.entries = entries;
+    renderFolderPanelBody(courseId);
+  }
+
+  async function connectFolder(courseId){
+    if(!fsSupported()) return;
+    try{
+      var handle = await window.showDirectoryPicker({mode:"read"});
+      await idbSet(courseId, handle);
+      fsCache[courseId] = {status:"ready", rootHandle:handle, path:[{name:handle.name, handle:handle}]};
+      await listDir(courseId, handle);
+    }catch(err){
+      if(err && err.name === "AbortError") return;
+      fsCache[courseId] = {status:"error", message:"This view couldn't get local folder access — try opening Term Board in its own browser tab and connecting from there."};
+      renderFolderPanelBody(courseId);
+    }
+  }
+
+  async function reconnectFolder(courseId){
+    var st = fsCache[courseId];
+    if(!st || !st.rootHandle) return;
+    try{
+      var perm = await st.rootHandle.requestPermission({mode:"read"});
+      if(perm === "granted"){
+        fsCache[courseId] = {status:"ready", rootHandle:st.rootHandle, path:[{name:st.rootHandle.name, handle:st.rootHandle}]};
+        await listDir(courseId, st.rootHandle);
+      }else{
+        renderFolderPanelBody(courseId);
+      }
+    }catch(e){
+      fsCache[courseId] = {status:"error", message:"Could not reconnect to that folder."};
+      renderFolderPanelBody(courseId);
+    }
+  }
+
+  async function disconnectFolder(courseId){
+    await idbDelete(courseId);
+    delete fsCache[courseId];
+    renderFolderPanel(courseId);
+  }
+
+  function navigateInto(courseId, name){
+    var st = fsCache[courseId];
+    var entry = st && st.entries && st.entries.find(function(e){ return e.name === name && e.kind === "directory"; });
+    if(!entry) return;
+    st.path.push({name:entry.name, handle:entry.handle});
+    listDir(courseId, entry.handle);
+  }
+
+  function navigateToPathIndex(courseId, idx){
+    var st = fsCache[courseId];
+    if(!st || !st.path || idx >= st.path.length) return;
+    st.path = st.path.slice(0, idx+1);
+    listDir(courseId, st.path[idx].handle);
+  }
+
+  function refreshFolder(courseId){
+    var st = fsCache[courseId];
+    if(!st || !st.currentHandle) return;
+    listDir(courseId, st.currentHandle);
+  }
+
+  async function openFsEntry(name){
+    var courseId = state.courseFilter;
+    var st = fsCache[courseId];
+    var entry = st && st.entries && st.entries.find(function(e){ return e.name === name; });
+    if(!entry) return;
+    if(entry.kind === "directory"){ navigateInto(courseId, name); return; }
+    try{
+      var file = await entry.handle.getFile();
+      var url = URL.createObjectURL(file);
+      window.open(url, "_blank");
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+    }catch(e){ /* file may have been removed since listing — ignore */ }
+  }
+
+  function fsExtBadge(name){
+    var m = /\.([a-zA-Z0-9]{1,6})$/.exec(name);
+    return m ? m[1].toUpperCase() : "—";
+  }
+
+  function folderBodyHtml(courseId){
+    var st = fsCache[courseId];
+    if(!st || st.status === "loading"){
+      return '<div class="fs-note">Checking folder access…</div>';
+    }
+    if(st.status === "unsupported"){
+      return '<div class="fs-note">Local folder connections need a Chromium browser (Chrome or Edge) on desktop. The materials list above works anywhere.</div>';
+    }
+    if(st.status === "none"){
+      return '<div class="folder-head"><button type="button" class="btn" data-fs-connect>+ Connect folder</button></div>'+
+        '<div class="fs-note">Shows the files in a folder on this device. The connection stays local to this browser — reconnect it on another device or browser.</div>';
+    }
+    if(st.status === "permission-needed"){
+      return '<div class="folder-head"><button type="button" class="btn" data-fs-reconnect>Reconnect folder</button>'+
+        '<button type="button" class="fs-btn" data-fs-disconnect>Disconnect</button></div>'+
+        '<div class="fs-note">This browser needs you to reconfirm access to keep showing this folder.</div>';
+    }
+    if(st.status === "error"){
+      return '<div class="fs-note">'+escapeHtml(st.message||"Something went wrong reaching that folder.")+'</div>'+
+        '<div class="folder-actions" style="margin-top:8px;"><button type="button" class="btn" data-fs-connect>Try again</button></div>';
+    }
+    var crumbs = (st.path||[]).map(function(p, idx){
+      var isLast = idx === st.path.length - 1;
+      return isLast ? '<span>'+escapeHtml(p.name)+'</span>' : ('<button type="button" data-fs-crumb="'+idx+'">'+escapeHtml(p.name)+'</button><span class="sep">/</span>');
+    }).join("");
+    var rows = (st.entries||[]).map(function(e){
+      var badge = e.kind === "directory" ? "›" : fsExtBadge(e.name);
+      return '<li class="file-row '+(e.kind==="directory"?"dir":"")+'" data-fs-name="'+escapeHtml(e.name)+'">'+
+        '<span class="file-badge">'+badge+'</span><span class="file-name">'+escapeHtml(e.name)+'</span></li>';
+    }).join("");
+    if(!rows) rows = '<li class="fs-note" style="padding:5px 6px;">Empty folder.</li>';
+    return '<div class="folder-head"><div class="folder-actions">'+
+        '<button type="button" class="fs-btn" data-fs-refresh>⟳ Refresh</button>'+
+        '<button type="button" class="fs-btn" data-fs-change>Change</button>'+
+        '<button type="button" class="fs-btn" data-fs-disconnect>Disconnect</button>'+
+      '</div></div>'+
+      '<div class="breadcrumb">'+crumbs+'</div>'+
+      '<ul class="file-list">'+rows+'</ul>';
+  }
+
+  function renderFolderPanelBody(courseId){
+    if(state.courseFilter !== courseId) return;
+    var panel = document.getElementById("folderPanel");
+    if(!panel) return;
+    panel.innerHTML = '<div class="section-label">Local folder</div>' + folderBodyHtml(courseId);
+  }
+
+  function renderFolderPanel(courseId){
+    ensureFolderState(courseId);
+    renderFolderPanelBody(courseId);
+  }
+
+  /* ---------- date helpers ---------- */
+
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+
+  function dateFromParts(dateStr, timeStr){
+    var parts = dateStr.split("-").map(Number);
+    var d = new Date(parts[0], parts[1]-1, parts[2]);
+    if(timeStr){
+      var tp = timeStr.split(":").map(Number);
+      d.setHours(tp[0], tp[1]||0, 0, 0);
+    }
+    return d;
+  }
+
+  function dayDiff(dateStr){
+    var today = dateFromParts(todayStr());
+    var target = dateFromParts(dateStr);
+    return Math.round((target - today) / 86400000);
+  }
+
+  function formatDate(dateStr){
+    var d = dateFromParts(dateStr);
+    return d.toLocaleDateString(undefined, {weekday:"short", month:"short", day:"numeric"});
+  }
+
+  function formatTime(timeStr){
+    if(!timeStr) return "";
+    var tp = timeStr.split(":").map(Number);
+    var d = new Date(); d.setHours(tp[0],tp[1],0,0);
+    return d.toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"});
+  }
+
+  function dueWhenLabel(item){
+    var diff = dayDiff(item.dueDate);
+    var timePart = item.dueTime ? " · " + formatTime(item.dueTime) : "";
+    if(diff < 0) return {text:(diff===-1?"1 day overdue":(-diff)+" days overdue"), cls:"od"};
+    if(diff === 0) return {text:"Today"+timePart, cls:"soon"};
+    if(diff === 1) return {text:"Tomorrow"+timePart, cls:"soon"};
+    if(diff <= 6) return {text:formatDate(item.dueDate)+timePart, cls:"soon"};
+    return {text:formatDate(item.dueDate)+timePart, cls:""};
+  }
+
+  function escapeHtml(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function linkify(text){
+    var esc = escapeHtml(text);
+    return esc.replace(/(https?:\/\/[^\s<]+)/g, function(url){
+      return '<a href="'+url+'" target="_blank" rel="noopener">'+url+'</a>';
+    }).replace(/\n/g, "<br>");
+  }
+
+  function courseById(id){ return state.courses.find(function(c){return c.id===id;}); }
+
+  var WEEKDAY_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  var WEEKDAY_SHORT = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  function courseSchedule(course){ return Array.isArray(course.schedule) ? course.schedule : []; }
+
+  var URL_RE = /(https?:\/\/[^\s]+)/;
+
+  /** Returns a course's materials as a structured array, migrating the
+   * legacy free-text "resources" field (one entry per line) on the fly
+   * so nothing already saved is lost. */
+  function courseMaterials(course){
+    if(Array.isArray(course.materials)) return course.materials;
+    if(!course.resources) return [];
+    return course.resources.split("\n").map(function(line){
+      line = line.trim();
+      if(!line) return null;
+      var m = line.match(URL_RE);
+      var url = m ? m[0] : "";
+      var label = url ? line.replace(url, "").replace(/[-:–—]\s*$/, "").trim() : line;
+      return {id: genId(), label: label || url, url: url};
+    }).filter(Boolean);
+  }
+
+  /* ---------- semester ---------- */
+
+  function mondayOf(dateStr){
+    var d = dateFromParts(dateStr);
+    var dow = (d.getDay()+6)%7; // Monday = 0
+    d.setDate(d.getDate()-dow);
+    return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+  }
+
+  function addDaysStr(dateStr, n){
+    var d = dateFromParts(dateStr);
+    d.setDate(d.getDate()+n);
+    return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+  }
+
+  /** Where "now" sits relative to the configured semester: which week,
+   * whether it's a declared break, exam period, or outside the term
+   * entirely. Returns null if no semester has been set up. */
+  function semesterStatus(){
+    var sem = state.semester;
+    if(!sem || !sem.startDate || !sem.endDate) return null;
+    var t = todayStr();
+    if(t < sem.startDate) return {kind:"before", label:"Starts "+formatDate(sem.startDate)};
+    if(t > sem.endDate) return {kind:"after", label:"Term ended "+formatDate(sem.endDate)};
+    if(sem.examStart && sem.examEnd && t >= sem.examStart && t <= sem.examEnd){
+      return {kind:"exam", label:"Exam period"};
+    }
+    var brk = (sem.breaks||[]).find(function(b){ return b.startDate && b.endDate && t >= b.startDate && t <= b.endDate; });
+    if(brk) return {kind:"break", label:(brk.label||"Break")};
+    var startMon = mondayOf(sem.startDate);
+    var weekNum = Math.floor((dateFromParts(mondayOf(t)) - dateFromParts(startMon)) / (7*86400000)) + 1;
+    var totalWeeks = Math.ceil((dateFromParts(sem.endDate) - dateFromParts(startMon)) / (7*86400000));
+    return {kind:"term", label:"Week "+weekNum+(totalWeeks>0 ? " of "+totalWeeks : ""), weekNum:weekNum};
+  }
+
+  /** True if the given date falls inside a declared break or exam
+   * period — used to grey out recurring lessons that don't actually
+   * happen that week. */
+  function isNonTeachingDate(dateStr){
+    var sem = state.semester;
+    if(!sem) return false;
+    if(sem.examStart && sem.examEnd && dateStr >= sem.examStart && dateStr <= sem.examEnd) return true;
+    return (sem.breaks||[]).some(function(b){ return b.startDate && b.endDate && dateStr >= b.startDate && dateStr <= b.endDate; });
+  }
+
+  /** Synthesizes "what do I need to know right now": today's current or
+   * next recurring lesson, and the nearest pending deadline — the two
+   * facts that matter most in the moment, scoped to the selected course
+   * when one is open. */
+  function rightNowInfo(){
+    var t = todayStr();
+    var nowMinutes = new Date().getHours()*60 + new Date().getMinutes();
+    var courses = state.courseFilter ? [courseById(state.courseFilter)].filter(Boolean) : state.courses;
+    var todayDow = (new Date().getDay()+6)%7;
+    var teachingToday = !isNonTeachingDate(t);
+
+    var lessonsToday = [];
+    if(teachingToday){
+      courses.forEach(function(c){
+        courseSchedule(c).forEach(function(s){
+          if(s.weekday === todayDow) lessonsToday.push({course:c, sched:s});
+        });
+      });
+    }
+    lessonsToday.sort(function(a,b){ return (toMinutes(a.sched.start)||0) - (toMinutes(b.sched.start)||0); });
+
+    var current = lessonsToday.find(function(l){
+      var s = toMinutes(l.sched.start), e = toMinutes(l.sched.end);
+      if(e==null && s!=null) e = s+45;
+      return s!=null && nowMinutes>=s && nowMinutes<e;
+    });
+    var next = lessonsToday.find(function(l){
+      var s = toMinutes(l.sched.start);
+      return s!=null && s>nowMinutes;
+    });
+
+    var items = state.items.filter(function(i){ return i.status !== "done"; });
+    if(state.courseFilter) items = items.filter(function(i){ return i.courseId === state.courseFilter; });
+    items.sort(function(a,b){ return dateFromParts(a.dueDate,a.dueTime) - dateFromParts(b.dueDate,b.dueTime); });
+
+    return {teachingToday:teachingToday, current:current, next:next, nextDeadline:items[0]};
+  }
+
+  /* ---------- rendering ---------- */
+
+  function render(){
+    document.getElementById("todayPill").textContent = new Date().toLocaleDateString(undefined, {weekday:"long", month:"long", day:"numeric", year:"numeric"});
+    renderNowRibbon();
+    renderTermPanel();
+    renderCourseList();
+    renderCalendar();
+    renderStats();
+    renderCourseHeader();
+    renderTabs();
+    renderDayChip();
+    renderList();
+    var addItemBtn = document.getElementById("addItemBtn");
+    addItemBtn.disabled = state.courses.length === 0;
+    addItemBtn.title = state.courses.length === 0 ? "Add a course first" : "";
+    var activeCourse = state.courseFilter ? courseById(state.courseFilter) : null;
+    addItemBtn.textContent = activeCourse ? ("+ Add to " + activeCourse.name) : "+ Add deadline / exam";
+  }
+
+  function renderNowRibbon(){
+    var el = document.getElementById("nowRibbon");
+    var info = rightNowInfo();
+
+    var left;
+    if(info.current){
+      var c = info.current.course, s = info.current.sched;
+      left = {active:true, label:"In class now", value:s.code+" "+c.name,
+        sub:(s.room?s.room+" · ":"")+"until "+formatTime(s.end||s.start), courseId:c.id};
+    }else if(info.teachingToday && info.next){
+      var c2 = info.next.course, s2 = info.next.sched;
+      left = {active:false, label:"Next class today", value:s2.code+" "+c2.name,
+        sub:"at "+formatTime(s2.start)+(s2.room?" · "+s2.room:""), courseId:c2.id};
+    }else if(!info.teachingToday){
+      var status = semesterStatus();
+      var label = (status && (status.kind==="break"||status.kind==="exam")) ? status.label : "No classes today";
+      left = {active:false, label:"Today", value:label, sub:""};
+    }else{
+      left = {active:false, label:"Today", value:"No more classes", sub:""};
+    }
+
+    var right;
+    if(info.nextDeadline){
+      var d = info.nextDeadline;
+      var dc = courseById(d.courseId);
+      var when = dueWhenLabel(d);
+      right = {label:"Next due", value:d.title, sub:(dc?dc.name+" · ":"")+when.text, itemId:d.id};
+    }else{
+      right = {label:"Next due", value:"Nothing pending", sub:""};
+    }
+
+    el.innerHTML =
+      '<div class="now-seg '+(left.active?"active":"")+'" '+(left.courseId?'data-goto-course="'+left.courseId+'"':'')+'>'+
+        '<div class="now-label">'+left.label+'</div><div class="now-value">'+escapeHtml(left.value)+'</div>'+
+        (left.sub?'<div class="now-sub">'+escapeHtml(left.sub)+'</div>':'')+
+      '</div>'+
+      '<div class="now-seg" '+(right.itemId?'data-goto-item="'+right.itemId+'"':'')+'>'+
+        '<div class="now-label">'+right.label+'</div><div class="now-value">'+escapeHtml(right.value)+'</div>'+
+        (right.sub?'<div class="now-sub">'+escapeHtml(right.sub)+'</div>':'')+
+      '</div>';
+  }
+
+  function renderTermPanel(){
+    var el = document.getElementById("termPanel");
+    var sem = state.semester;
+    if(!sem){
+      el.innerHTML = '<div class="term-empty"><h2>Term</h2>'+
+        '<p>Set up your semester to see week numbers, breaks, and exam periods at a glance.</p>'+
+        '<button class="btn btn-full" id="setupSemesterBtn">Set up semester</button></div>';
+      return;
+    }
+    var status = semesterStatus();
+    var statusHtml = status ? '<div class="term-status '+status.kind+'">'+escapeHtml(status.label)+'</div><br>' : "";
+    el.innerHTML = '<h2>Term</h2>'+
+      '<div class="term-name">'+escapeHtml(sem.termName||"This semester")+'</div>'+
+      (sem.institution ? '<div class="term-inst">'+escapeHtml(sem.institution)+'</div>' : '')+
+      statusHtml+
+      '<button type="button" class="term-edit-link" id="editSemesterBtn">Edit semester</button>';
+  }
+
+  function renderCourseList(){
+    var el = document.getElementById("courseList");
+    var html = '<button class="course-row all '+(state.courseFilter===null?'active':'')+'" data-course="">'+
+      '<span class="name">All courses</span><span class="count">'+state.courses.length+'</span></button>';
+    state.courses.forEach(function(c){
+      var count = state.items.filter(function(i){return i.courseId===c.id && i.status!=="done";}).length;
+      html += '<span class="course-row course-color-'+c.color+' '+(state.courseFilter===c.id?'active':'')+'" data-course="'+c.id+'" style="cursor:pointer;">'+
+        '<span class="course-dot"></span><span class="name">'+escapeHtml(c.name)+'</span>'+
+        (count>0 ? '<span class="count">'+count+'</span>' : '')+
+        '<button type="button" class="course-edit" data-edit-course="'+c.id+'" aria-label="Edit '+escapeHtml(c.name)+'">Edit</button>'+
+        '</span>';
+    });
+    el.innerHTML = html;
+    if(state.courses.length===0){
+      el.innerHTML = '<div class="empty-note">No courses yet — add one to start tracking deadlines.</div>';
+    }
+  }
+
+  function renderStats(){
+    var pending = state.items.filter(function(i){return i.status!=="done";});
+    var overdue = pending.filter(function(i){return dayDiff(i.dueDate) < 0;});
+    var today = pending.filter(function(i){return dayDiff(i.dueDate) === 0;});
+    var week = pending.filter(function(i){var d=dayDiff(i.dueDate); return d>=0 && d<=6;});
+    var exams = pending.filter(function(i){return i.type==="exam";}).sort(function(a,b){
+      return dateFromParts(a.dueDate,a.dueTime) - dateFromParts(b.dueDate,b.dueTime);
+    });
+    var nextExam = exams[0];
+
+    var html = '';
+    html += '<div class="stat '+(overdue.length>0?'warn':'')+'"><div class="n mono">'+overdue.length+'</div><div class="l">Overdue</div></div>';
+    html += '<div class="stat"><div class="n mono">'+today.length+'</div><div class="l">Due today</div></div>';
+    html += '<div class="stat"><div class="n mono">'+week.length+'</div><div class="l">Next 7 days</div></div>';
+    if(nextExam){
+      var d = dayDiff(nextExam.dueDate);
+      var lbl = d < 0 ? "overdue" : (d===0?"today":(d===1?"in 1 day":"in "+d+" days"));
+      var c = courseById(nextExam.courseId);
+      html += '<div class="stat next"><div class="n mono">'+lbl+'</div><div class="l">Next exam</div>'+
+        '<div class="sub">'+escapeHtml(nextExam.title)+(c?' · '+escapeHtml(c.name):'')+'</div></div>';
+    }else{
+      html += '<div class="stat next"><div class="n" style="font-size:1.1rem">No exams yet</div><div class="l">Next exam</div></div>';
+    }
+    document.getElementById("stats").innerHTML = html;
+  }
+
+  function pad2(n){ return String(n).padStart(2,"0"); }
+
+  function calendarItems(){
+    var items = state.items.filter(function(i){ return i.status !== "done"; });
+    if(state.courseFilter) items = items.filter(function(i){ return i.courseId === state.courseFilter; });
+    return items;
+  }
+
+  function calHeadHtml(titleHtml, prevLabel, nextLabel){
+    return '<div class="cal-head">'+
+      '<div class="cal-title">'+titleHtml+'</div>'+
+      '<div class="cal-nav">'+
+        '<div class="tabs view-toggle">'+
+          '<button type="button" class="tab '+(state.calView==="week"?"active":"")+'" data-cal-view="week">Week</button>'+
+          '<button type="button" class="tab '+(state.calView==="month"?"active":"")+'" data-cal-view="month">Month</button>'+
+        '</div>'+
+        '<button type="button" class="cal-nav-btn" id="calPrev" aria-label="'+prevLabel+'">‹</button>'+
+        '<button type="button" class="btn cal-today-btn" id="calToday">Today</button>'+
+        '<button type="button" class="cal-nav-btn" id="calNext" aria-label="'+nextLabel+'">›</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function renderCalendar(){
+    if(state.calView === "week") renderWeekCalendar();
+    else renderMonthCalendar();
+  }
+
+  function renderMonthCalendar(){
+    var el = document.getElementById("calPanel");
+    var year = state.calYear, month = state.calMonth;
+    var monthName = new Date(year, month, 1).toLocaleDateString(undefined, {month:"long", year:"numeric"});
+    var items = calendarItems();
+    var byDate = {};
+    items.forEach(function(i){
+      (byDate[i.dueDate] = byDate[i.dueDate] || []).push(i);
+    });
+
+    var firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Monday = 0
+    var daysInMonth = new Date(year, month+1, 0).getDate();
+    var todayStrVal = todayStr();
+
+    var weekdays = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+    var cellsHtml = weekdays.map(function(w){ return '<div class="cal-weekday">'+w+'</div>'; }).join("");
+
+    for(var i=0;i<firstDow;i++){ cellsHtml += '<div class="cal-cell pad"></div>'; }
+
+    for(var d=1; d<=daysInMonth; d++){
+      var dateStr = year+"-"+pad2(month+1)+"-"+pad2(d);
+      var dayItems = byDate[dateStr] || [];
+      var isToday = dateStr === todayStrVal;
+      var isSelected = dateStr === state.dayFilter;
+      var hasExam = dayItems.some(function(x){ return x.type==="exam"; });
+      var colorsSeen = [];
+      dayItems.forEach(function(it){
+        var c = courseById(it.courseId);
+        var col = c ? c.color : "slate";
+        if(colorsSeen.indexOf(col) === -1) colorsSeen.push(col);
+      });
+      var dots = colorsSeen.slice(0,4).map(function(col){
+        return '<span class="cal-dot swatch-'+col+'"></span>';
+      }).join("");
+      var more = dayItems.length > 4 ? '<span class="cal-more">+'+(dayItems.length-4)+'</span>' : "";
+      cellsHtml += '<div class="cal-cell '+(dayItems.length?'has-items':'')+' '+(isToday?'today':'')+' '+(isSelected?'selected':'')+' '+(hasExam?'exam-day':'')+'" '+
+        (dayItems.length ? ('data-day="'+dateStr+'"') : '')+' title="'+dayItems.length+' item'+(dayItems.length===1?'':'s')+'">'+
+        '<span class="cal-daynum">'+d+'</span><span class="cal-dots">'+dots+more+'</span></div>';
+    }
+
+    el.innerHTML = calHeadHtml(monthName, "Previous month", "Next month") +
+      '<div class="cal-grid">'+cellsHtml+'</div>';
+  }
+
+  function toMinutes(t){
+    if(!t) return null;
+    var p = t.split(":").map(Number);
+    return p[0]*60+(p[1]||0);
+  }
+
+  function weekDatesFrom(anchorStr){
+    var mon = mondayOf(anchorStr);
+    var days = [];
+    for(var i=0;i<7;i++) days.push(addDaysStr(mon, i));
+    return days;
+  }
+
+  function renderWeekCalendar(){
+    var el = document.getElementById("calPanel");
+    var days = weekDatesFrom(state.weekAnchor);
+    var title = dateFromParts(days[0]).toLocaleDateString(undefined,{month:"short",day:"numeric"})+
+      " – "+dateFromParts(days[6]).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+    var sem = state.semester;
+    if(sem && sem.startDate && days[0] >= sem.startDate && days[0] <= sem.endDate){
+      var wn = Math.floor((dateFromParts(days[0]) - dateFromParts(mondayOf(sem.startDate)))/(7*86400000))+1;
+      title += ' <span class="week-badge">Week '+wn+'</span>';
+    }
+
+    var items = calendarItems();
+    var byDate = {};
+    items.forEach(function(i){ (byDate[i.dueDate]=byDate[i.dueDate]||[]).push(i); });
+
+    var courses = state.courseFilter ? [courseById(state.courseFilter)].filter(Boolean) : state.courses;
+    var lessonsByDow = [[],[],[],[],[],[],[]];
+    courses.forEach(function(c){
+      courseSchedule(c).forEach(function(s){
+        if(s.weekday>=0 && s.weekday<=6) lessonsByDow[s.weekday].push({course:c, sched:s});
+      });
+    });
+
+    var minMin = 8*60, maxMin = 18*60;
+    lessonsByDow.forEach(function(list){
+      list.forEach(function(entry){
+        var s = toMinutes(entry.sched.start), e = toMinutes(entry.sched.end);
+        if(s!=null) minMin = Math.min(minMin, s);
+        if(e!=null) maxMin = Math.max(maxMin, e);
+        else if(s!=null) maxMin = Math.max(maxMin, s+60);
+      });
+    });
+    minMin = Math.max(0, Math.floor(minMin/60)*60 - 60);
+    maxMin = Math.min(24*60, Math.ceil(maxMin/60)*60 + 60);
+    var totalMin = maxMin - minMin;
+    var hourCount = totalMin/60;
+    var pxPerHour = 52;
+    var bodyHeight = hourCount*pxPerHour;
+
+    var gutterHtml = "";
+    for(var h=0; h<=hourCount; h++){
+      gutterHtml += '<div class="week-time-label" style="top:'+(h*pxPerHour)+'px;">'+pad2((minMin/60+h)%24)+':00</div>';
+    }
+
+    var todayStrVal = todayStr();
+    var headCells = "", allDayCells = "", bodyCells = "";
+    days.forEach(function(dateStr, dow){
+      var isToday = dateStr === todayStrVal;
+      var nonTeaching = isNonTeachingDate(dateStr);
+      headCells += '<div class="week-day-head '+(isToday?"today":"")+'">'+WEEKDAY_SHORT[dow]+' <span class="wd-num">'+dateFromParts(dateStr).getDate()+'</span></div>';
+
+      var dayItems = byDate[dateStr] || [];
+      var chips = dayItems.map(function(it){
+        var c = courseById(it.courseId);
+        var col = c ? c.color : "slate";
+        return '<div class="week-chip course-color-'+col+' '+(it.type==="exam"?"exam":"")+'" data-item="'+it.id+'" title="'+escapeHtml(it.title)+'">'+escapeHtml(it.title)+'</div>';
+      }).join("");
+      allDayCells += '<div class="week-allday-cell">'+chips+'</div>';
+
+      var blocks = lessonsByDow[dow].map(function(entry){
+        var s = toMinutes(entry.sched.start);
+        if(s==null) return "";
+        var e = toMinutes(entry.sched.end); if(e==null) e = s+45;
+        var top = (s-minMin)/totalMin*bodyHeight;
+        var height = Math.max(20, (e-s)/totalMin*bodyHeight);
+        var tip = entry.course.name+" — "+entry.sched.code+" "+formatTime(entry.sched.start)+(entry.sched.end?"–"+formatTime(entry.sched.end):"")+(entry.sched.room?" · "+entry.sched.room:"");
+        return '<div class="week-block course-color-'+entry.course.color+'" style="top:'+top+'px; height:'+height+'px;" title="'+escapeHtml(tip)+'">'+
+          '<span class="week-block-code">'+escapeHtml(entry.sched.code)+'</span> '+escapeHtml(entry.course.name)+
+          (entry.sched.room?'<span class="week-block-room">'+escapeHtml(entry.sched.room)+'</span>':'')+
+        '</div>';
+      }).join("");
+
+      bodyCells += '<div class="week-day-body '+(nonTeaching?"non-teaching":"")+'">'+blocks+'</div>';
+    });
+
+    el.innerHTML = calHeadHtml(title, "Previous week", "Next week")+
+      '<div class="week-scroll"><div class="week-wrap">'+
+        '<div class="week-row week-row-head"><div></div>'+headCells+'</div>'+
+        '<div class="week-row week-row-allday"><div></div>'+allDayCells+'</div>'+
+        '<div class="week-row week-row-body" style="height:'+bodyHeight+'px;">'+
+          '<div class="week-time-col" style="height:'+bodyHeight+'px;">'+gutterHtml+'</div>'+
+          bodyCells+
+        '</div>'+
+      '</div></div>';
+  }
+
+  function materialsListHtml(course){
+    var mats = courseMaterials(course);
+    if(!mats.length) return '<div class="mat-empty">No materials added yet.</div>';
+    return '<ol class="mat-list">'+mats.map(function(m, idx){
+      var isLink = !!m.url;
+      var labelHtml = escapeHtml(m.label || m.url);
+      return '<li class="mat-item">'+
+        '<span class="mat-num">'+(idx+1)+'</span>'+
+        '<span class="mat-label" title="'+escapeHtml(m.label||m.url)+'">'+labelHtml+'</span>'+
+        (isLink ? '<a class="mat-open" href="'+escapeHtml(m.url)+'" target="_blank" rel="noopener">Open ↗</a>' : '')+
+      '</li>';
+    }).join("")+'</ol>';
+  }
+
+  function scheduleListHtml(course){
+    var sched = courseSchedule(course).slice().sort(function(a,b){
+      if(a.weekday !== b.weekday) return a.weekday - b.weekday;
+      return (a.start||"").localeCompare(b.start||"");
+    });
+    if(!sched.length) return '<div class="mat-empty">No recurring lessons yet.</div>';
+    return '<ol class="mat-list">'+sched.map(function(s){
+      var time = s.start ? (formatTime(s.start)+(s.end?"–"+formatTime(s.end):"")) : "";
+      return '<li class="mat-item">'+
+        '<span class="mat-num" style="border-radius:5px; width:auto; min-width:19px; padding:0 5px;">'+escapeHtml(s.code)+'</span>'+
+        '<span class="mat-label">'+WEEKDAY_SHORT[s.weekday]+(time?" · "+time:"")+(s.room?" · "+escapeHtml(s.room):"")+'</span>'+
+      '</li>';
+    }).join("")+'</ol>';
+  }
+
+  function renderCourseHeader(){
+    var el = document.getElementById("courseHeader");
+    var c = state.courseFilter ? courseById(state.courseFilter) : null;
+    if(!c){ el.innerHTML = ""; return; }
+    el.innerHTML = '<div class="course-header course-color-'+c.color+'">'+
+      '<button type="button" class="back" id="backToAll">← All courses</button>'+
+      '<div class="course-header-top">'+
+        '<div class="course-header-id">'+
+          '<span class="course-dot" style="width:12px;height:12px;"></span>'+
+          '<h2>'+escapeHtml(c.name)+'</h2>'+
+          (c.code ? '<span class="code">'+escapeHtml(c.code)+'</span>' : '')+
+        '</div>'+
+        '<button type="button" class="btn btn-ghost" id="headerEditCourse">Edit course</button>'+
+      '</div>'+
+      (c.instructor ? '<div class="instructor">'+escapeHtml(c.instructor)+'</div>' : '')+
+      '<div class="course-header-body">'+
+        '<div class="course-panel-col">'+
+          '<div class="section-label">Weekly schedule</div>'+
+          scheduleListHtml(c)+
+        '</div>'+
+        '<div class="course-panel-col">'+
+          '<div class="section-label">Materials</div>'+
+          materialsListHtml(c)+
+        '</div>'+
+        '<div class="course-panel-col" id="folderPanel"></div>'+
+      '</div>'+
+    '</div>';
+    renderFolderPanel(c.id);
+  }
+
+  function renderDayChip(){
+    var chip = document.getElementById("dayChip");
+    if(!state.dayFilter){ chip.hidden = true; return; }
+    chip.hidden = false;
+    var d = dateFromParts(state.dayFilter);
+    chip.innerHTML = escapeHtml(d.toLocaleDateString(undefined, {weekday:"short", month:"short", day:"numeric"})) +
+      '<button type="button" id="clearDayFilter" aria-label="Clear date filter">×</button>';
+  }
+
+  function renderTabs(){
+    document.querySelectorAll("#tabs .tab").forEach(function(t){
+      t.classList.toggle("active", t.dataset.tab === state.tab);
+    });
+  }
+
+  function itemCard(item){
+    var c = courseById(item.courseId);
+    var when = dueWhenLabel(item);
+    var isDone = item.status === "done";
+    var isOverdue = !isDone && dayDiff(item.dueDate) < 0;
+    return '<div class="item '+(isDone?'done':'')+' '+(isOverdue?'overdue':'')+'" data-item="'+item.id+'">'+
+      '<button class="check '+(isDone?'checked':'')+'" data-toggle="'+item.id+'" aria-label="Mark done">'+(isDone?'✓':'')+'</button>'+
+      '<div class="item-main">'+
+        '<div class="item-top">'+
+          '<span class="item-title">'+escapeHtml(item.title)+'</span>'+
+          '<span class="badge badge-type-'+item.type+'">'+TYPE_LABELS[item.type]+'</span>'+
+        '</div>'+
+        '<div class="item-meta">'+
+          (c ? '<span class="badge badge-course '+ 'course-color-'+c.color+'">'+escapeHtml(c.name)+'</span>' : '')+
+          '<span class="due-when '+when.cls+'">'+when.text+'</span>'+
+        '</div>'+
+        (item.notes ? '<div class="item-notes">'+escapeHtml(item.notes)+'</div>' : '')+
+      '</div>'+
+    '</div>';
+  }
+
+  function groupHeader(text, danger){
+    return '<div class="group-title '+(danger?'od':'')+'">'+text+'<span class="line"></span></div>';
+  }
+
+  function renderList(){
+    var el = document.getElementById("listArea");
+    var items = state.items.slice();
+    if(state.courseFilter) items = items.filter(function(i){return i.courseId===state.courseFilter;});
+
+    if(state.courses.length === 0){
+      el.innerHTML = '<div class="empty-state"><h3>Set up your first course</h3>'+
+        '<p>Add a course, then start logging assignments, readings, and exam dates against it.</p>'+
+        '<button class="btn btn-primary" id="emptyAddCourse">+ Add course</button></div>';
+      var b = document.getElementById("emptyAddCourse");
+      if(b) b.addEventListener("click", function(){ openCourseDialog(null); });
+      return;
+    }
+
+    var html = "";
+
+    if(state.dayFilter){
+      var dayItems = items.filter(function(i){ return i.dueDate === state.dayFilter; }).sort(function(a,b){
+        return dateFromParts(a.dueDate,a.dueTime) - dateFromParts(b.dueDate,b.dueTime);
+      });
+      html = dayItems.length ? '<div class="group">'+dayItems.map(itemCard).join("")+'</div>' : emptyStateHtml("Nothing on this day", "Pick another date on the calendar, or clear the filter.");
+      el.innerHTML = '<div style="display:flex; flex-direction:column; gap:16px;">'+html+'</div>';
+      return;
+    }
+
+    if(state.tab === "exams"){
+      var exams = items.filter(function(i){return i.type==="exam";}).sort(function(a,b){
+        return dateFromParts(a.dueDate,a.dueTime) - dateFromParts(b.dueDate,b.dueTime);
+      });
+      if(exams.length===0){
+        html = emptyStateHtml("No exams logged", "Add an exam to see it counted down here.");
+      }else{
+        html = '<div class="group">'+exams.map(itemCard).join("")+'</div>';
+      }
+    } else if(state.tab === "done"){
+      var done = items.filter(function(i){return i.status==="done";}).sort(function(a,b){
+        return dateFromParts(b.dueDate,b.dueTime) - dateFromParts(a.dueDate,a.dueTime);
+      });
+      html = done.length ? '<div class="group">'+done.map(itemCard).join("")+'</div>' : emptyStateHtml("Nothing completed yet", "Items you check off will show up here.");
+    } else {
+      var pending = items.filter(function(i){return i.status!=="done";});
+      if(state.tab === "all"){
+        pending = items.slice();
+      }
+      pending.sort(function(a,b){ return dateFromParts(a.dueDate,a.dueTime) - dateFromParts(b.dueDate,b.dueTime); });
+
+      var buckets = {overdue:[], today:[], tomorrow:[], week:[], later:[], done:[]};
+      pending.forEach(function(i){
+        if(i.status === "done"){ buckets.done.push(i); return; }
+        var d = dayDiff(i.dueDate);
+        if(d<0) buckets.overdue.push(i);
+        else if(d===0) buckets.today.push(i);
+        else if(d===1) buckets.tomorrow.push(i);
+        else if(d<=6) buckets.week.push(i);
+        else buckets.later.push(i);
+      });
+
+      if(pending.length === 0){
+        html = emptyStateHtml("You're all caught up", "No pending deadlines match this view.");
+      }else{
+        if(buckets.overdue.length){ html += groupHeader("Overdue", true) + '<div class="group">'+buckets.overdue.map(itemCard).join("")+'</div>'; }
+        if(buckets.today.length){ html += groupHeader("Today") + '<div class="group">'+buckets.today.map(itemCard).join("")+'</div>'; }
+        if(buckets.tomorrow.length){ html += groupHeader("Tomorrow") + '<div class="group">'+buckets.tomorrow.map(itemCard).join("")+'</div>'; }
+        if(buckets.week.length){ html += groupHeader("This week") + '<div class="group">'+buckets.week.map(itemCard).join("")+'</div>'; }
+        if(buckets.later.length){ html += groupHeader("Later") + '<div class="group">'+buckets.later.map(itemCard).join("")+'</div>'; }
+        if(state.tab==="all" && buckets.done.length){ html += groupHeader("Completed") + '<div class="group">'+buckets.done.map(itemCard).join("")+'</div>'; }
+      }
+    }
+
+    el.innerHTML = '<div style="display:flex; flex-direction:column; gap:16px;">'+html+'</div>';
+  }
+
+  function emptyStateHtml(title, sub){
+    return '<div class="empty-state"><h3>'+title+'</h3><p>'+sub+'</p></div>';
+  }
+
+  /* ---------- dialogs ---------- */
+
+  function populateCourseSelect(selectedId){
+    var sel = document.getElementById("f-course");
+    sel.innerHTML = state.courses.map(function(c){
+      return '<option value="'+c.id+'" '+(c.id===selectedId?'selected':'')+'>'+escapeHtml(c.name)+'</option>';
+    }).join("");
+  }
+
+  function openItemDialog(item, forcedCourseId){
+    state.editingItemId = item ? item.id : null;
+    document.getElementById("itemDlgTitle").textContent = item ? "Edit item" : "Add deadline";
+    document.getElementById("itemDeleteBtn").hidden = !item;
+    var courseSel = document.getElementById("f-course");
+    populateCourseSelect(item ? item.courseId : (forcedCourseId || (state.courses[0] && state.courses[0].id)));
+    courseSel.disabled = !item && !!forcedCourseId;
+    document.getElementById("f-title").value = item ? item.title : "";
+    document.getElementById("f-type").value = item ? item.type : "assignment";
+    document.getElementById("f-date").value = item ? item.dueDate : (state.dayFilter || todayStr());
+    document.getElementById("f-time").value = item ? (item.dueTime||"") : "";
+    document.getElementById("f-notes").value = item ? (item.notes||"") : "";
+    document.getElementById("itemDialog").showModal();
+    document.getElementById("f-title").focus();
+  }
+
+  function closeItemDialog(){ document.getElementById("itemDialog").close(); }
+
+  function openCourseDialog(course){
+    state.editingCourseId = course ? course.id : null;
+    document.getElementById("courseDlgTitle").textContent = course ? "Edit course" : "Add course";
+    document.getElementById("courseDeleteBtn").hidden = !course;
+    document.getElementById("c-name").value = course ? course.name : "";
+    document.getElementById("c-code").value = course ? (course.code||"") : "";
+    document.getElementById("c-instructor").value = course ? (course.instructor||"") : "";
+    renderScheduleEditor(course ? courseSchedule(course) : []);
+    renderMaterialsEditor(course ? courseMaterials(course) : []);
+    var chosen = course ? course.color : COLORS[state.courses.length % COLORS.length];
+    renderSwatches(chosen);
+    var hint = document.getElementById("courseItemsHint");
+    if(course){
+      var n = state.items.filter(function(i){return i.courseId===course.id;}).length;
+      if(n>0){ hint.hidden=false; hint.textContent = "Deleting this course also deletes its "+n+" tracked item"+(n===1?"":"s")+"."; }
+      else hint.hidden = true;
+    }else hint.hidden = true;
+    document.getElementById("courseDialog").showModal();
+    document.getElementById("c-name").focus();
+  }
+
+  function closeCourseDialog(){ document.getElementById("courseDialog").close(); }
+
+  function renderSwatches(selected){
+    var el = document.getElementById("colorSwatches");
+    el.innerHTML = COLORS.map(function(col){
+      return '<button type="button" class="swatch swatch-'+col+' '+(col===selected?'selected':'')+'" data-color="'+col+'" aria-label="'+col+'"></button>';
+    }).join("");
+    el.dataset.selected = selected;
+    el.querySelectorAll(".swatch").forEach(function(sw){
+      sw.addEventListener("click", function(){
+        el.querySelectorAll(".swatch").forEach(function(s){s.classList.remove("selected");});
+        sw.classList.add("selected");
+        el.dataset.selected = sw.dataset.color;
+      });
+    });
+  }
+
+  function scheduleRowHtml(s){
+    s = s || {};
+    var weekdayOpts = WEEKDAY_NAMES.map(function(name, idx){
+      return '<option value="'+idx+'" '+(Number(s.weekday)===idx?'selected':'')+'>'+name+'</option>';
+    }).join("");
+    return '<div class="sched-row">'+
+      '<input type="text" class="sched-code" placeholder="V" maxlength="6" value="'+escapeHtml(s.code||"")+'">'+
+      '<select class="sched-weekday">'+weekdayOpts+'</select>'+
+      '<input type="time" class="sched-start" value="'+escapeHtml(s.start||"")+'">'+
+      '<input type="time" class="sched-end" value="'+escapeHtml(s.end||"")+'">'+
+      '<input type="text" class="sched-room" placeholder="Room (optional)" value="'+escapeHtml(s.room||"")+'">'+
+      '<button type="button" class="mat-remove" aria-label="Remove lesson">×</button>'+
+    '</div>';
+  }
+
+  function renderScheduleEditor(schedule){
+    document.getElementById("scheduleEditor").innerHTML = (schedule && schedule.length) ? schedule.map(scheduleRowHtml).join("") : "";
+  }
+
+  function gatherSchedule(){
+    var out = [];
+    document.querySelectorAll("#scheduleEditor .sched-row").forEach(function(row){
+      var code = row.querySelector(".sched-code").value.trim();
+      var start = row.querySelector(".sched-start").value;
+      var end = row.querySelector(".sched-end").value;
+      var weekday = Number(row.querySelector(".sched-weekday").value);
+      var room = row.querySelector(".sched-room").value.trim();
+      if(code || start || end) out.push({id:genId(), code:code||"?", weekday:weekday, start:start, end:end, room:room});
+    });
+    return out;
+  }
+
+  document.getElementById("scheduleEditor").addEventListener("click", function(e){
+    if(e.target.closest(".mat-remove")) e.target.closest(".sched-row").remove();
+  });
+  document.getElementById("addScheduleRow").addEventListener("click", function(){
+    document.getElementById("scheduleEditor").insertAdjacentHTML("beforeend", scheduleRowHtml({weekday:0}));
+  });
+
+  function materialRowHtml(m){
+    return '<div class="material-row">'+
+      '<input type="text" class="mat-label-input" placeholder="Label (e.g. Week 3 slides)" value="'+escapeHtml(m.label||"")+'">'+
+      '<input type="text" class="mat-url-input" placeholder="Link (optional)" value="'+escapeHtml(m.url||"")+'">'+
+      '<button type="button" class="mat-remove" aria-label="Remove material">×</button>'+
+    '</div>';
+  }
+
+  function renderMaterialsEditor(materials){
+    var el = document.getElementById("materialsEditor");
+    var list = (materials && materials.length) ? materials : [{label:"", url:""}];
+    el.innerHTML = list.map(materialRowHtml).join("");
+  }
+
+  function gatherMaterials(){
+    var rows = document.querySelectorAll("#materialsEditor .material-row");
+    var out = [];
+    rows.forEach(function(row){
+      var label = row.querySelector(".mat-label-input").value.trim();
+      var url = row.querySelector(".mat-url-input").value.trim();
+      if(label || url) out.push({id:genId(), label:label, url:url});
+    });
+    return out;
+  }
+
+  document.getElementById("materialsEditor").addEventListener("click", function(e){
+    if(e.target.closest(".mat-remove")){
+      var row = e.target.closest(".material-row");
+      var editor = document.getElementById("materialsEditor");
+      if(editor.children.length > 1) row.remove();
+      else { row.querySelector(".mat-label-input").value=""; row.querySelector(".mat-url-input").value=""; }
+    }
+  });
+
+  document.getElementById("addMaterialRow").addEventListener("click", function(){
+    document.getElementById("materialsEditor").insertAdjacentHTML("beforeend", materialRowHtml({label:"",url:""}));
+  });
+
+  /* ---------- semester dialog ---------- */
+
+  function breakRowHtml(b){
+    b = b || {};
+    return '<div class="break-row">'+
+      '<input type="text" class="break-label" placeholder="Label (e.g. Autumn break)" value="'+escapeHtml(b.label||"")+'">'+
+      '<input type="date" class="break-start" value="'+escapeHtml(b.startDate||"")+'">'+
+      '<input type="date" class="break-end" value="'+escapeHtml(b.endDate||"")+'">'+
+      '<button type="button" class="mat-remove" aria-label="Remove break">×</button>'+
+    '</div>';
+  }
+
+  function renderBreaksEditor(breaks){
+    document.getElementById("breaksEditor").innerHTML = (breaks||[]).map(breakRowHtml).join("");
+  }
+
+  function gatherBreaks(){
+    var out = [];
+    document.querySelectorAll("#breaksEditor .break-row").forEach(function(row){
+      var label = row.querySelector(".break-label").value.trim();
+      var s = row.querySelector(".break-start").value;
+      var e = row.querySelector(".break-end").value;
+      if(label || s || e) out.push({id:genId(), label:label, startDate:s, endDate:e});
+    });
+    return out;
+  }
+
+  function openSemesterDialog(){
+    var sem = state.semester || {};
+    document.getElementById("s-institution").value = sem.institution || "";
+    document.getElementById("s-term-name").value = sem.termName || "";
+    document.getElementById("s-start").value = sem.startDate || "";
+    document.getElementById("s-end").value = sem.endDate || "";
+    document.getElementById("s-exam-start").value = sem.examStart || "";
+    document.getElementById("s-exam-end").value = sem.examEnd || "";
+    renderBreaksEditor(sem.breaks || []);
+    document.getElementById("semesterDialog").showModal();
+    document.getElementById("s-term-name").focus();
+  }
+
+  function closeSemesterDialog(){ document.getElementById("semesterDialog").close(); }
+
+  document.getElementById("breaksEditor").addEventListener("click", function(e){
+    if(e.target.closest(".mat-remove")) e.target.closest(".break-row").remove();
+  });
+  document.getElementById("addBreakRow").addEventListener("click", function(){
+    document.getElementById("breaksEditor").insertAdjacentHTML("beforeend", breakRowHtml());
+  });
+  document.getElementById("semesterCancelBtn").addEventListener("click", closeSemesterDialog);
+  document.getElementById("semesterClearBtn").addEventListener("click", function(){
+    persistSemester(null);
+    closeSemesterDialog();
+  });
+  document.getElementById("semesterForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var termName = document.getElementById("s-term-name").value.trim();
+    var startDate = document.getElementById("s-start").value;
+    var endDate = document.getElementById("s-end").value;
+    if(!termName || !startDate || !endDate) return;
+    persistSemester({
+      institution: document.getElementById("s-institution").value.trim(),
+      termName: termName,
+      startDate: startDate,
+      endDate: endDate,
+      examStart: document.getElementById("s-exam-start").value,
+      examEnd: document.getElementById("s-exam-end").value,
+      breaks: gatherBreaks()
+    });
+    closeSemesterDialog();
+  });
+  document.getElementById("nowRibbon").addEventListener("click", function(e){
+    var goCourse = e.target.closest("[data-goto-course]");
+    if(goCourse){ state.courseFilter = goCourse.dataset.gotoCourse; state.dayFilter = null; render(); return; }
+    var goItem = e.target.closest("[data-goto-item]");
+    if(goItem){
+      var it = state.items.find(function(i){ return i.id === goItem.dataset.gotoItem; });
+      if(it) openItemDialog(it);
+    }
+  });
+
+  document.getElementById("termPanel").addEventListener("click", function(e){
+    if(e.target.closest("#setupSemesterBtn") || e.target.closest("#editSemesterBtn")) openSemesterDialog();
+  });
+
+  /* ---------- events ---------- */
+
+  document.getElementById("addItemBtn").addEventListener("click", function(){ openItemDialog(null, state.courseFilter); });
+  document.getElementById("addCourseBtn").addEventListener("click", function(){ openCourseDialog(null); });
+  document.getElementById("exportBtn").addEventListener("click", exportData);
+  document.getElementById("importBtn").addEventListener("click", function(){ document.getElementById("importFile").click(); });
+  document.getElementById("importFile").addEventListener("change", function(e){
+    var file = e.target.files && e.target.files[0];
+    if(file) importDataFromFile(file);
+    e.target.value = "";
+  });
+  document.getElementById("itemCancelBtn").addEventListener("click", closeItemDialog);
+  document.getElementById("courseCancelBtn").addEventListener("click", closeCourseDialog);
+
+  document.getElementById("itemForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var id = state.editingItemId || genId();
+    var existing = state.items.find(function(i){return i.id===id;});
+    var item = {
+      id: id,
+      courseId: document.getElementById("f-course").value,
+      title: document.getElementById("f-title").value.trim(),
+      type: document.getElementById("f-type").value,
+      dueDate: document.getElementById("f-date").value,
+      dueTime: document.getElementById("f-time").value,
+      notes: document.getElementById("f-notes").value.trim(),
+      status: existing ? existing.status : "pending"
+    };
+    if(!item.title || !item.courseId || !item.dueDate){ return; }
+    persistItem(item);
+    closeItemDialog();
+  });
+
+  document.getElementById("itemDeleteBtn").addEventListener("click", function(){
+    if(state.editingItemId){ deleteItem(state.editingItemId); }
+    closeItemDialog();
+  });
+
+  document.getElementById("courseForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var id = state.editingCourseId || genId();
+    var color = document.getElementById("colorSwatches").dataset.selected || COLORS[0];
+    var course = {
+      id: id,
+      name: document.getElementById("c-name").value.trim(),
+      code: document.getElementById("c-code").value.trim(),
+      instructor: document.getElementById("c-instructor").value.trim(),
+      materials: gatherMaterials(),
+      schedule: gatherSchedule(),
+      color: color
+    };
+    if(!course.name){ return; }
+    persistCourse(course);
+    closeCourseDialog();
+  });
+
+  document.getElementById("courseDeleteBtn").addEventListener("click", function(){
+    if(state.editingCourseId){ deleteCourseAndItems(state.editingCourseId); }
+    closeCourseDialog();
+  });
+
+  document.getElementById("tabs").addEventListener("click", function(e){
+    var t = e.target.closest(".tab");
+    if(!t) return;
+    state.tab = t.dataset.tab;
+    state.dayFilter = null;
+    render();
+  });
+
+  document.getElementById("dayChip").addEventListener("click", function(e){
+    if(e.target.closest("#clearDayFilter")){
+      state.dayFilter = null;
+      render();
+    }
+  });
+
+  document.getElementById("courseList").addEventListener("click", function(e){
+    var editBtn = e.target.closest("[data-edit-course]");
+    if(editBtn){
+      var course = courseById(editBtn.dataset.editCourse);
+      if(course) openCourseDialog(course);
+      return;
+    }
+    var row = e.target.closest(".course-row");
+    if(!row) return;
+    var cid = row.dataset.course;
+    state.courseFilter = cid || null;
+    state.dayFilter = null;
+    render();
+  });
+
+  document.getElementById("courseHeader").addEventListener("click", function(e){
+    if(e.target.closest("#backToAll")){
+      state.courseFilter = null;
+      state.dayFilter = null;
+      render();
+      return;
+    }
+    if(e.target.closest("#headerEditCourse")){
+      var c = courseById(state.courseFilter);
+      if(c) openCourseDialog(c);
+      return;
+    }
+    var courseId = state.courseFilter;
+    if(!courseId) return;
+    if(e.target.closest("[data-fs-connect]")){ connectFolder(courseId); return; }
+    if(e.target.closest("[data-fs-change]")){ connectFolder(courseId); return; }
+    if(e.target.closest("[data-fs-reconnect]")){ reconnectFolder(courseId); return; }
+    if(e.target.closest("[data-fs-disconnect]")){ disconnectFolder(courseId); return; }
+    if(e.target.closest("[data-fs-refresh]")){ refreshFolder(courseId); return; }
+    var crumb = e.target.closest("[data-fs-crumb]");
+    if(crumb){ navigateToPathIndex(courseId, Number(crumb.dataset.fsCrumb)); return; }
+    var fileRow = e.target.closest("[data-fs-name]");
+    if(fileRow){ openFsEntry(fileRow.dataset.fsName); return; }
+  });
+
+  document.getElementById("calPanel").addEventListener("click", function(e){
+    var viewBtn = e.target.closest("[data-cal-view]");
+    if(viewBtn){ state.calView = viewBtn.dataset.calView; render(); return; }
+
+    if(e.target.closest("#calPrev")){
+      if(state.calView === "week"){ state.weekAnchor = addDaysStr(state.weekAnchor, -7); }
+      else{ state.calMonth--; if(state.calMonth < 0){ state.calMonth = 11; state.calYear--; } }
+      render();
+      return;
+    }
+    if(e.target.closest("#calNext")){
+      if(state.calView === "week"){ state.weekAnchor = addDaysStr(state.weekAnchor, 7); }
+      else{ state.calMonth++; if(state.calMonth > 11){ state.calMonth = 0; state.calYear++; } }
+      render();
+      return;
+    }
+    if(e.target.closest("#calToday")){
+      if(state.calView === "week"){ state.weekAnchor = todayStr(); }
+      else{ state.calYear = now.getFullYear(); state.calMonth = now.getMonth(); }
+      render();
+      return;
+    }
+    var chip = e.target.closest("[data-item]");
+    if(chip){
+      var it = state.items.find(function(i){ return i.id === chip.dataset.item; });
+      if(it) openItemDialog(it);
+      return;
+    }
+    var cell = e.target.closest("[data-day]");
+    if(cell){
+      var day = cell.dataset.day;
+      state.dayFilter = (state.dayFilter === day) ? null : day;
+      render();
+    }
+  });
+
+  document.getElementById("listArea").addEventListener("click", function(e){
+    var toggle = e.target.closest("[data-toggle]");
+    if(toggle){
+      var item = state.items.find(function(i){return i.id===toggle.dataset.toggle;});
+      if(item) toggleItemStatus(item);
+      return;
+    }
+    var card = e.target.closest(".item");
+    if(card){
+      var it = state.items.find(function(i){return i.id===card.dataset.item;});
+      if(it) openItemDialog(it);
+    }
+  });
+
+  /* ---------- boot ---------- */
+  initPersistence();
+
+})();
+</script>
+</body>
+</html>
