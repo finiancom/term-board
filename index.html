@@ -545,6 +545,15 @@
   .mat-open:hover{background:var(--surface-2);}
   .mat-empty{font-size:.82rem; color:var(--ink-faint);}
 
+  .exam-style-row .mat-label{flex:none; overflow:visible; white-space:normal;}
+  .exam-style-value{margin-left:auto; font-size:.85rem; color:var(--ink-faint); font-weight:600; white-space:nowrap;}
+  .exam-style-value.is-set{color:var(--ink);}
+
+  /* exam style editor (dialog) */
+  .exam-style-editor{display:flex; flex-direction:column; gap:9px;}
+  .check-option{display:flex; align-items:center; gap:7px; font-size:.85rem; color:var(--ink); cursor:pointer;}
+  .check-option input{width:auto; margin:0;}
+
   /* materials editor (dialog) */
   .materials-editor{display:flex; flex-direction:column; gap:7px;}
   .material-row{display:flex; gap:7px; align-items:center;}
@@ -748,6 +757,17 @@
       <label>Materials &amp; links</label>
       <div class="materials-editor" id="materialsEditor"></div>
       <button type="button" class="btn" id="addMaterialRow">+ Add material</button>
+    </div>
+    <div class="field">
+      <label>Exam style</label>
+      <div class="exam-style-editor">
+        <label class="check-option"><input type="checkbox" id="c-exam-bonus"> Bonus points available</label>
+        <label class="check-option"><input type="checkbox" id="c-exam-midterms"> Midterm exam(s)</label>
+        <div class="field" style="margin:0;">
+          <label for="c-exam-date" style="font-size:.78rem; font-weight:400; color:var(--ink-soft);">Final exam date (optional)</label>
+          <input type="date" id="c-exam-date">
+        </div>
+      </div>
     </div>
     <div class="hint" id="courseItemsHint" hidden></div>
     <div class="dlg-actions">
@@ -1329,6 +1349,8 @@
 
   function courseSchedule(course){ return Array.isArray(course.schedule) ? course.schedule : []; }
 
+  function courseExamStyle(course){ return course.examStyle || {}; }
+
   var URL_RE = /(https?:\/\/[^\s]+)/;
 
   /** Returns a course's materials as a structured array, migrating the
@@ -1827,6 +1849,21 @@
     }).join("")+'</ol>';
   }
 
+  function examStyleHtml(course){
+    var ex = courseExamStyle(course);
+    var rows = [
+      ["Bonus points", ex.bonus ? "Yes" : "No", !!ex.bonus],
+      ["Midterms", ex.midterms ? "Yes" : "No", !!ex.midterms],
+      ["Exam date", ex.examDate ? formatDate(ex.examDate) : "Not set", !!ex.examDate]
+    ];
+    return '<div class="mat-list">'+rows.map(function(r){
+      return '<div class="mat-item exam-style-row">'+
+        '<span class="mat-label">'+r[0]+'</span>'+
+        '<span class="exam-style-value '+(r[2]?'is-set':'')+'">'+escapeHtml(r[1])+'</span>'+
+      '</div>';
+    }).join("")+'</div>';
+  }
+
   function renderCourseHeader(){
     var el = document.getElementById("courseHeader");
     var c = state.courseFilter ? courseById(state.courseFilter) : null;
@@ -1850,6 +1887,10 @@
         '<div class="course-panel-col">'+
           '<div class="section-label">Materials</div>'+
           materialsListHtml(c)+
+        '</div>'+
+        '<div class="course-panel-col">'+
+          '<div class="section-label">Exam style</div>'+
+          examStyleHtml(c)+
         '</div>'+
         '<div class="course-panel-col" id="folderPanel"></div>'+
       '</div>'+
@@ -2085,6 +2126,10 @@
     document.getElementById("c-instructor").value = course ? (course.instructor||"") : "";
     renderScheduleEditor(course ? courseSchedule(course) : []);
     renderMaterialsEditor(course ? courseMaterials(course) : []);
+    var ex = course ? courseExamStyle(course) : {};
+    document.getElementById("c-exam-bonus").checked = !!ex.bonus;
+    document.getElementById("c-exam-midterms").checked = !!ex.midterms;
+    document.getElementById("c-exam-date").value = ex.examDate || "";
     var chosen = course ? course.color : COLORS[state.courses.length % COLORS.length];
     renderSwatches(chosen);
     var hint = document.getElementById("courseItemsHint");
@@ -2360,6 +2405,11 @@
       instructor: document.getElementById("c-instructor").value.trim(),
       materials: gatherMaterials(),
       schedule: gatherSchedule(),
+      examStyle: {
+        bonus: document.getElementById("c-exam-bonus").checked,
+        midterms: document.getElementById("c-exam-midterms").checked,
+        examDate: document.getElementById("c-exam-date").value
+      },
       color: color
     };
     if(!course.name){ return; }

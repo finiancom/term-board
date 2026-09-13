@@ -8,7 +8,7 @@ Most of what matters during a semester boils down to one question: *what do I ne
 
 ## Features
 
-- **Courses** — name, code, color, instructor, and a numbered list of materials & links.
+- **Courses** — name, code, color, instructor, a numbered list of materials & links, and an exam style box (bonus points, midterms, final exam date).
 - **Deadlines & exams** — assignments, exams, quizzes, projects, and readings, each with a due date/time and notes. Overdue and due-soon items are called out automatically.
 - **Study sessions** — plan a block of time to study, with or without tying it to a course. Shows up on the week calendar, in its own "Study" tab, and in the "right now" strip when one's in progress or coming up.
 - **Weekly schedule** — give each course recurring lesson blocks (lectures, exercise classes, seminars — whatever labels your program uses) and see them laid out in a real weekly time grid.
