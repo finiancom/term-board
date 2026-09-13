@@ -12,7 +12,7 @@ Most of what matters during a semester boils down to one question: *what do I ne
 - **Deadlines & exams** — assignments, exams, quizzes, projects, and readings, each with a due date/time and notes. Overdue and due-soon items are called out automatically.
 - **Study sessions** — plan a block of time to study, with or without tying it to a course. Shows up on the week calendar, in its own "Study" tab, and in the "right now" strip when one's in progress or coming up.
 - **Weekly schedule** — give each course recurring lesson blocks (lectures, exercise classes, seminars — whatever labels your program uses) and see them laid out in a real weekly time grid.
-- **Semester setup** — enter your term's start/end dates, exam period, and breaks once; the app then knows what week it is, and quietly skips lessons during declared breaks.
+- **Semester setup** — enter your term's start/end dates, exam period, and breaks once; the app then knows what week it is, and quietly skips lessons during declared breaks. A "Fill from a preset" dropdown can fill all of this in for ETH Zürich's published semesters (hand-updated in the code, not fetched live) — or just fill it in manually for any other school.
 - **Month & week calendar views**, with a course-specific view when you drill into one course.
 - **Local folder connection** *(Chrome/Edge on desktop)* — point a course at a real folder on your computer and browse its files right there, using the browser's native File System Access API.
 - **Local-only storage** — everything is saved in your browser via `localStorage`. Nothing is sent to a server, because there is no server. Export a JSON backup any time and import it elsewhere (or on the same device after clearing browser data).

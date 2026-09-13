@@ -845,6 +845,18 @@
     <div class="dlg-head">
       <h2>Set up your semester</h2>
     </div>
+    <div class="field">
+      <label for="s-preset">Fill from a preset</label>
+      <select id="s-preset">
+        <option value="">Manual entry</option>
+        <optgroup label="ETH Zürich">
+          <option value="eth-hs26">Autumn Semester 2026 (HS26)</option>
+          <option value="eth-fs27">Spring Semester 2027 (FS27)</option>
+          <option value="eth-hs27">Autumn Semester 2027 (HS27)</option>
+        </optgroup>
+      </select>
+      <div class="hint" style="margin-top:2px;">Fills in the fields below from ETH Zürich's published academic calendar — double-check against <a href="https://ethz.ch/staffnet/en/news-and-events/academic-calendar.html" target="_blank" rel="noopener">ethz.ch</a> since these are hand-updated, not fetched live.</div>
+    </div>
     <div class="field-row">
       <div class="field" style="flex:1.3">
         <label for="s-institution">University / institution (optional)</label>
@@ -2280,6 +2292,64 @@
 
   /* ---------- semester dialog ---------- */
 
+  /** Hand-maintained from ETH Zürich's published academic calendar
+   * (ethz.ch/staffnet/en/news-and-events/academic-calendar.html) as of
+   * September 2026. Nothing here is fetched live — the app has no
+   * backend and no way to pull cross-origin pages — so these go stale
+   * and need a manual refresh once these semesters have passed. */
+  var ETH_PRESETS = [
+    {
+      id: "eth-hs26",
+      institution: "ETH Zürich",
+      termName: "Autumn Semester 2026 (HS26)",
+      startDate: "2026-09-14",
+      endDate: "2026-12-18",
+      examStart: "2027-01-25",
+      examEnd: "2027-02-19",
+      breaks: [
+        {label:"Knabenschiessen (no classes)", startDate:"2026-09-14", endDate:"2026-09-14"},
+        {label:"Christmas break", startDate:"2026-12-24", endDate:"2027-01-03"}
+      ]
+    },
+    {
+      id: "eth-fs27",
+      institution: "ETH Zürich",
+      termName: "Spring Semester 2027 (FS27)",
+      startDate: "2027-02-22",
+      endDate: "2027-06-04",
+      examStart: "2027-08-09",
+      examEnd: "2027-09-03",
+      breaks: [
+        {label:"Week after Easter (no classes)", startDate:"2027-03-26", endDate:"2027-04-04"},
+        {label:"Whitsuntide", startDate:"2027-05-15", endDate:"2027-05-17"}
+      ]
+    },
+    {
+      id: "eth-hs27",
+      institution: "ETH Zürich",
+      termName: "Autumn Semester 2027 (HS27)",
+      startDate: "2027-09-20",
+      endDate: "2027-12-24",
+      examStart: "2028-01-24",
+      examEnd: "2028-02-18",
+      breaks: [
+        {label:"Christmas break", startDate:"2027-12-24", endDate:"2028-01-02"}
+      ]
+    }
+  ];
+
+  function applySemesterPreset(id){
+    var preset = ETH_PRESETS.find(function(p){ return p.id === id; });
+    if(!preset) return;
+    document.getElementById("s-institution").value = preset.institution;
+    document.getElementById("s-term-name").value = preset.termName;
+    document.getElementById("s-start").value = preset.startDate;
+    document.getElementById("s-end").value = preset.endDate;
+    document.getElementById("s-exam-start").value = preset.examStart || "";
+    document.getElementById("s-exam-end").value = preset.examEnd || "";
+    renderBreaksEditor(preset.breaks || []);
+  }
+
   function breakRowHtml(b){
     b = b || {};
     return '<div class="break-row">'+
@@ -2307,6 +2377,7 @@
 
   function openSemesterDialog(){
     var sem = state.semester || {};
+    document.getElementById("s-preset").value = "";
     document.getElementById("s-institution").value = sem.institution || "";
     document.getElementById("s-term-name").value = sem.termName || "";
     document.getElementById("s-start").value = sem.startDate || "";
@@ -2320,6 +2391,11 @@
 
   function closeSemesterDialog(){ document.getElementById("semesterDialog").close(); }
 
+  document.getElementById("s-preset").addEventListener("change", function(e){
+    var id = e.target.value;
+    if(id) applySemesterPreset(id);
+    e.target.value = "";
+  });
   document.getElementById("breaksEditor").addEventListener("click", function(e){
     if(e.target.closest(".mat-remove")) e.target.closest(".break-row").remove();
   });
