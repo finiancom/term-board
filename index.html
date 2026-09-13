@@ -1698,12 +1698,25 @@
     return {kind:"term", label:"Week "+weekNum+(totalWeeks>0 ? " of "+totalWeeks : ""), weekNum:weekNum};
   }
 
-  /** True if the given date falls inside a declared break or exam
-   * period — used to grey out recurring lessons that don't actually
-   * happen that week. */
+  /** True if a semester is declared and the given date falls inside it
+   * (start–end, inclusive). With no semester set up yet, there's
+   * nothing to gate against, so every date counts as "in range" —
+   * matches the app's behavior before semester setup existed. */
+  function isWithinSemesterRange(dateStr){
+    var sem = state.semester;
+    if(!sem || !sem.startDate || !sem.endDate) return true;
+    return dateStr >= sem.startDate && dateStr <= sem.endDate;
+  }
+
+  /** True if the given date isn't a teaching day: outside the declared
+   * term entirely, or inside it but during a declared break or exam
+   * period. Recurring weekly lessons shouldn't appear on either kind
+   * of date — a Monday lecture doesn't happen in August just because
+   * its weekly slot says Monday. */
   function isNonTeachingDate(dateStr){
     var sem = state.semester;
     if(!sem) return false;
+    if(!isWithinSemesterRange(dateStr)) return true;
     if(sem.examStart && sem.examEnd && dateStr >= sem.examStart && dateStr <= sem.examEnd) return true;
     return (sem.breaks||[]).some(function(b){ return b.startDate && b.endDate && dateStr >= b.startDate && dateStr <= b.endDate; });
   }
@@ -2074,7 +2087,7 @@
       }).join("");
       allDayCells += '<div class="week-allday-cell">'+chips+untimedSessionChips+'</div>';
 
-      var blocks = lessonsByDow[dow].map(function(entry){
+      var blocks = !isWithinSemesterRange(dateStr) ? "" : lessonsByDow[dow].map(function(entry){
         var s = toMinutes(entry.sched.start);
         if(s==null) return "";
         var e = toMinutes(entry.sched.end); if(e==null) e = s+45;
