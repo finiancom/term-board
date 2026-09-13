@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="A free, local-first semester organizer: courses, deadlines, exams, a weekly class schedule, and a calendar — all stored in your own browser.">
 <title>Term Board</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232F5D50'/%3E%3Cpath d='M9 17l5 5 9-11' stroke='white' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
@@ -2709,6 +2710,7 @@
   });
   document.getElementById("semesterCancelBtn").addEventListener("click", closeSemesterDialog);
   document.getElementById("semesterClearBtn").addEventListener("click", function(){
+    if(state.semester && !window.confirm("Clear your semester setup? You'll need to re-enter the dates, breaks, and exam period.")) return;
     persistSemester(null);
     closeSemesterDialog();
   });
@@ -2850,7 +2852,13 @@
   });
 
   document.getElementById("courseDeleteBtn").addEventListener("click", function(){
-    if(state.editingCourseId){ deleteCourseAndItems(state.editingCourseId); }
+    if(!state.editingCourseId) return;
+    var course = courseById(state.editingCourseId);
+    var name = course ? course.name : "this course";
+    var n = state.items.filter(function(i){return i.courseId===state.editingCourseId;}).length;
+    var msg = 'Delete "'+name+'"? '+(n>0 ? "This also deletes its "+n+" tracked item"+(n===1?"":"s")+" — " : "")+"this can't be undone.";
+    if(!window.confirm(msg)) return;
+    deleteCourseAndItems(state.editingCourseId);
     closeCourseDialog();
   });
 
