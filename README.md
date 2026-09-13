@@ -16,6 +16,7 @@ Most of what matters during a semester boils down to one question: *what do I ne
 - **Month & week calendar views**, with a course-specific view when you drill into one course.
 - **Local folder connection** *(Chrome/Edge on desktop)* — point a course at a real folder on your computer and browse its files right there, using the browser's native File System Access API.
 - **Local-only storage** — everything is saved in your browser via `localStorage`. Nothing is sent to a server, because there is no server. Export a JSON backup any time and import it elsewhere (or on the same device after clearing browser data).
+- **Import a schedule from `.ics`** — parses a calendar file you already downloaded (e.g. ETH Zürich's myStudies "Add to calendar" export) entirely in your browser, no network call. Recurring weekly lectures/exercises become courses with a weekly schedule already filled in (grouped by course number when the title has one); one-off events like exams are left alone. Re-importing updates existing courses instead of duplicating them.
 
 ## Using it
 

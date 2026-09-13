@@ -648,7 +648,9 @@
         <button class="btn" id="importBtn">Import backup</button>
         <input type="file" id="importFile" accept="application/json" hidden>
       </div>
-      <p class="fs-note">Everything is saved in this browser only — nothing is sent anywhere. Export a backup before switching devices or browsers.</p>
+      <button class="btn btn-full" id="importIcsBtn" style="margin-bottom:10px;">Import schedule (.ics)</button>
+      <input type="file" id="importIcsFile" accept=".ics,text/calendar" hidden>
+      <p class="fs-note">Everything is saved in this browser only — nothing is sent anywhere. Export a backup before switching devices or browsers. The .ics import reads a calendar file you already downloaded (e.g. from ETH's myStudies) — nothing is fetched over the network.</p>
     </div>
   </aside>
 
@@ -1089,6 +1091,242 @@
       }catch(e){
         showBanner("Couldn't read that file — make sure it's a Term Board export.");
       }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------- .ics schedule import ----------
+   * Parses a standard iCalendar file entirely client-side — no network
+   * call, no scraping. Meant for a personal schedule export (e.g. ETH's
+   * myStudies "Add to calendar"), which lists your enrolled lectures,
+   * exercises, etc. as VEVENTs. This app's course model only knows a
+   * weekly recurring pattern (weekday + time), so:
+   *  - a VEVENT with RRULE:FREQ=WEEKLY, or one whose weekday/time/title
+   *    combination simply repeats more than once in the file, is taken
+   *    to be a recurring class and becomes a schedule row;
+   *  - everything else (a one-off exam slot, a block course, an
+   *    excursion) is left alone and just counted, so nothing gets
+   *    silently misfiled as a weekly lesson. */
+
+  function unfoldIcsLines(text){
+    var raw = String(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    var lines = [];
+    raw.forEach(function(line){
+      if(line.length && (line[0]===" " || line[0]==="\t") && lines.length){
+        lines[lines.length-1] += line.slice(1);
+      }else{
+        lines.push(line);
+      }
+    });
+    return lines;
+  }
+
+  function icsUnescapeText(s){
+    return String(s||"").replace(/\\n/gi, " ").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\").trim();
+  }
+
+  function parseIcsPropLine(line){
+    var colonIdx = line.indexOf(":");
+    if(colonIdx < 0) return null;
+    var head = line.slice(0, colonIdx);
+    var parts = head.split(";");
+    var params = {};
+    parts.slice(1).forEach(function(p){
+      var eq = p.indexOf("=");
+      if(eq > 0) params[p.slice(0,eq).toUpperCase()] = p.slice(eq+1);
+    });
+    return {name: parts[0].toUpperCase(), params: params, value: line.slice(colonIdx+1)};
+  }
+
+  var ICS_WEEKDAY_MAP = {MO:0, TU:1, WE:2, TH:3, FR:4, SA:5, SU:6};
+
+  /** Converts one DTSTART/DTEND property into Zurich wall-clock parts,
+   * handling all three iCal time shapes (floating, TZID, and UTC "Z"). */
+  function icsToZurichParts(prop){
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(prop.value);
+    if(!m) return null;
+    var y=+m[1], mo=+m[2], d=+m[3], h=+(m[4]||0), mi=+(m[5]||0), isUtc = !!m[7];
+    if(isUtc){
+      var utcDate = new Date(Date.UTC(y, mo-1, d, h, mi));
+      var parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone:"Europe/Zurich", year:"numeric", month:"2-digit", day:"2-digit",
+        hour:"2-digit", minute:"2-digit", hour12:false, weekday:"short"
+      }).formatToParts(utcDate);
+      var get = function(t){ var p=parts.find(function(x){return x.type===t;}); return p?p.value:"0"; };
+      return {h:+get("hour"), mi:+get("minute"), weekday: ICS_WEEKDAY_MAP[get("weekday").slice(0,2).toUpperCase()] || 0};
+    }
+    // Floating local time, or TZID-qualified — ETH's own export is in
+    // Europe/Zurich anyway, so the digits are taken as-is.
+    var jsDate = new Date(y, mo-1, d);
+    return {h:h, mi:mi, weekday:(jsDate.getDay()+6)%7};
+  }
+
+  function parseIcsFile(text){
+    var lines = unfoldIcsLines(text);
+    var events = [];
+    var current = null;
+    lines.forEach(function(line){
+      if(/^BEGIN:VEVENT/i.test(line)) current = [];
+      else if(/^END:VEVENT/i.test(line)){ if(current) events.push(current); current = null; }
+      else if(current) current.push(line);
+    });
+    return events.map(function(eventLines){
+      var props = eventLines.map(parseIcsPropLine).filter(Boolean);
+      var find = function(name){ return props.find(function(p){return p.name===name;}); };
+      var dtstart = find("DTSTART");
+      var summaryProp = find("SUMMARY");
+      if(!dtstart || !summaryProp) return null;
+      var startParts = icsToZurichParts(dtstart);
+      if(!startParts) return null;
+      var dtend = find("DTEND");
+      var endParts = dtend ? icsToZurichParts(dtend) : null;
+      var rruleProp = find("RRULE");
+      var weekly = false, byDays = null;
+      if(rruleProp){
+        var rrule = {};
+        rruleProp.value.split(";").forEach(function(kv){
+          var eq = kv.indexOf("="); if(eq<0) return;
+          rrule[kv.slice(0,eq).toUpperCase()] = kv.slice(eq+1);
+        });
+        if((rrule.FREQ||"").toUpperCase() === "WEEKLY"){
+          weekly = true;
+          if(rrule.BYDAY) byDays = rrule.BYDAY.split(",").map(function(d){
+            return ICS_WEEKDAY_MAP[d.trim().toUpperCase().slice(-2)];
+          }).filter(function(x){ return x !== undefined; });
+        }
+      }
+      var locationProp = find("LOCATION");
+      var urlProp = find("URL");
+      var descProp = find("DESCRIPTION");
+      return {
+        summary: icsUnescapeText(summaryProp.value),
+        location: locationProp ? icsUnescapeText(locationProp.value) : "",
+        url: urlProp ? urlProp.value.trim() : "",
+        description: descProp ? icsUnescapeText(descProp.value) : "",
+        weekly: weekly,
+        weekdays: (byDays && byDays.length) ? byDays : [startParts.weekday],
+        startTime: pad2(startParts.h)+":"+pad2(startParts.mi),
+        endTime: endParts ? pad2(endParts.h)+":"+pad2(endParts.mi) : ""
+      };
+    }).filter(Boolean);
+  }
+
+  /** Splits multi-weekday events into one entry per weekday, then keeps
+   * only the ones that look recurring (explicit RRULE, or the same
+   * title/weekday/time/room combination shows up more than once). */
+  function icsRecurringEvents(events){
+    var expanded = [];
+    events.forEach(function(ev){
+      ev.weekdays.forEach(function(wd){
+        expanded.push({
+          summary: ev.summary, location: ev.location, url: ev.url, description: ev.description,
+          weekday: wd, startTime: ev.startTime, endTime: ev.endTime, weekly: ev.weekly
+        });
+      });
+    });
+    var slotKey = function(e){ return e.summary+"|"+e.weekday+"|"+e.startTime+"|"+e.endTime+"|"+e.location; };
+    var counts = {};
+    expanded.forEach(function(e){ var k = slotKey(e); counts[k] = (counts[k]||0) + 1; });
+    var seen = {}, recurring = [], skipped = 0;
+    expanded.forEach(function(e){
+      var k = slotKey(e);
+      if(!(e.weekly || counts[k] >= 2)){ skipped++; return; }
+      if(seen[k]) return;
+      seen[k] = true;
+      recurring.push(e);
+    });
+    return {recurring: recurring, skipped: skipped};
+  }
+
+  var ICS_COURSE_CODE_RE = /^(\d{3}-\d{4}-\d{2}L)\s*/;
+  var ICS_TYPE_HINTS = [
+    [/\bexercise(s)?\b/i, "Ü"],
+    [/\bseminar\b/i, "S"],
+    [/\bpractical|practicum|laboratory|\blab\b/i, "P"],
+    [/\bcolloquium\b/i, "K"],
+    [/\blecture\b/i, "V"]
+  ];
+  function guessIcsScheduleCode(summary){
+    for(var i=0;i<ICS_TYPE_HINTS.length;i++){ if(ICS_TYPE_HINTS[i][0].test(summary)) return ICS_TYPE_HINTS[i][1]; }
+    return "V";
+  }
+
+  /** Groups recurring events into courses, merging a course's lecture
+   * and exercise slots together when their titles share an ETH course
+   * number (e.g. "252-0061-00L") — otherwise groups by title. */
+  function buildCoursesFromIcsEvents(recurringEvents){
+    var groups = {};
+    recurringEvents.forEach(function(e){
+      var m = ICS_COURSE_CODE_RE.exec(e.summary);
+      var code = m ? m[1] : "";
+      var rawName = m ? e.summary.slice(m[0].length) : e.summary;
+      var name = rawName.replace(/\s*[-–]?\s*\((lecture|exercise|seminar|practical|practicum|laboratory|colloquium)\)\s*$/i, "").trim() || e.summary;
+      var key = code || name.toLowerCase();
+      if(!groups[key]) groups[key] = {code: code, name: name, url: "", schedule: []};
+      var g = groups[key];
+      if(!g.url){
+        if(e.url) g.url = e.url;
+        else if(e.description){ var mm = URL_RE.exec(e.description); if(mm) g.url = mm[1]; }
+      }
+      g.schedule.push({id:genId(), code:guessIcsScheduleCode(e.summary), weekday:e.weekday, start:e.startTime, end:e.endTime, room:e.location||""});
+    });
+    return Object.keys(groups).map(function(k){ return groups[k]; });
+  }
+
+  function importIcsFile(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var events;
+      try{
+        events = parseIcsFile(reader.result);
+      }catch(e){
+        showBanner("Couldn't read that file — make sure it's a .ics calendar export.");
+        return;
+      }
+      if(!events.length){
+        showBanner("No calendar events found in that file.");
+        return;
+      }
+      var found = icsRecurringEvents(events);
+      if(!found.recurring.length){
+        showBanner("Found "+events.length+" event(s) in that file, but none looked like a recurring weekly class — nothing imported.");
+        return;
+      }
+      var groups = buildCoursesFromIcsEvents(found.recurring);
+      var added = 0, updated = 0;
+      groups.forEach(function(g){
+        var existing = state.courses.find(function(c){
+          if(g.code) return (c.code||"").trim().toLowerCase() === g.code.toLowerCase();
+          return c.name.trim().toLowerCase() === g.name.trim().toLowerCase();
+        });
+        if(existing){
+          var seenRow = {};
+          courseSchedule(existing).forEach(function(r){ seenRow[r.weekday+"|"+r.start+"|"+r.end+"|"+r.room+"|"+r.code] = true; });
+          var newRows = g.schedule.filter(function(r){ return !seenRow[r.weekday+"|"+r.start+"|"+r.end+"|"+r.room+"|"+r.code]; });
+          existing.schedule = courseSchedule(existing).concat(newRows);
+          if(!existing.code && g.code) existing.code = g.code;
+          if(g.url && !courseMaterials(existing).some(function(m){return m.url===g.url;})){
+            existing.materials = courseMaterials(existing).concat([{id:genId(), label:"Course page", url:g.url}]);
+          }
+          updated++;
+        }else{
+          state.courses.push({
+            id: genId(),
+            name: g.name,
+            code: g.code,
+            instructor: "",
+            materials: g.url ? [{id:genId(), label:"Course page", url:g.url}] : [],
+            schedule: g.schedule,
+            color: COLORS[state.courses.length % COLORS.length]
+          });
+          added++;
+        }
+      });
+      saveLocal(); render();
+      var msg = "Imported "+added+" new course"+(added===1?"":"s")+
+        (updated ? " and updated "+updated+" existing one"+(updated===1?"":"s") : "")+" from your schedule.";
+      if(found.skipped) msg += " Skipped "+found.skipped+" one-off event"+(found.skipped===1?"":"s")+" (exams, block courses — add those manually if you need them).";
+      showBanner(msg);
     };
     reader.readAsText(file);
   }
@@ -2454,6 +2692,12 @@
   document.getElementById("importFile").addEventListener("change", function(e){
     var file = e.target.files && e.target.files[0];
     if(file) importDataFromFile(file);
+    e.target.value = "";
+  });
+  document.getElementById("importIcsBtn").addEventListener("click", function(){ document.getElementById("importIcsFile").click(); });
+  document.getElementById("importIcsFile").addEventListener("change", function(e){
+    var file = e.target.files && e.target.files[0];
+    if(file) importIcsFile(file);
     e.target.value = "";
   });
   document.getElementById("itemCancelBtn").addEventListener("click", closeItemDialog);
