@@ -543,6 +543,20 @@
     border:1px solid var(--line); border-radius:6px; padding:2px 7px; white-space:nowrap;
   }
   .mat-open:hover{background:var(--surface-2);}
+
+  .mat-group-label{
+    font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600;
+    color:var(--ink-faint); margin:10px 0 6px;
+  }
+  .mat-status{
+    flex:none; width:19px; height:19px; border-radius:50%; border:1.5px solid var(--line-strong);
+    background:var(--surface); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; padding:0; font-size:.62rem; line-height:1; color:transparent;
+  }
+  .mat-status:hover{border-color:var(--ink-soft);}
+  .mat-status-in_progress{border-color:var(--warning); background:var(--warning-soft); color:var(--warning-ink);}
+  .mat-status-done{border-color:var(--good); background:var(--good); color:#fff;}
+  .mat-item.status-done .mat-label{color:var(--ink-faint); text-decoration:line-through;}
   .mat-empty{font-size:.82rem; color:var(--ink-faint);}
 
   .exam-style-row .mat-label{flex:none; overflow:visible; white-space:normal;}
@@ -558,9 +572,10 @@
 
   /* materials editor (dialog) */
   .materials-editor{display:flex; flex-direction:column; gap:7px;}
-  .material-row{display:flex; gap:7px; align-items:center;}
-  .material-row input{flex:1;}
+  .material-row{display:flex; gap:7px; align-items:center; flex-wrap:wrap;}
+  .material-row input{flex:1; min-width:120px;}
   .material-row input.mat-url-input{flex:1.2;}
+  .material-row select.mat-type-input{flex:0 0 128px; min-width:110px;}
   .mat-remove{
     flex:none; width:26px; height:26px; border-radius:7px; border:1px solid var(--line-strong);
     background:var(--surface); color:var(--ink-soft); cursor:pointer; font-size:.8rem;
@@ -2098,18 +2113,58 @@
       '</div></div>';
   }
 
+  var MATERIAL_TYPE_ORDER = ["slides", "problemset", "solution", "reading", "recording", ""];
+  var MATERIAL_TYPE_LABELS = {slides:"Slides", problemset:"Problem sets", solution:"Solutions", reading:"Reading", recording:"Recordings", "":"Other"};
+  var MATERIAL_STATUS_ICON = {todo:"", in_progress:"•", done:"✓"};
+  var MATERIAL_STATUS_LABEL = {todo:"Mark in progress", in_progress:"Mark done", done:"Mark to do"};
+
+  function materialStatus(m){
+    return (m.status === "in_progress" || m.status === "done") ? m.status : "todo";
+  }
+  function nextMaterialStatus(status){
+    return status === "todo" ? "in_progress" : status === "in_progress" ? "done" : "todo";
+  }
+
   function materialsListHtml(course){
     var mats = courseMaterials(course);
     if(!mats.length) return '<div class="mat-empty">No materials added yet.</div>';
-    return '<ol class="mat-list">'+mats.map(function(m, idx){
-      var isLink = !!m.url;
-      var labelHtml = escapeHtml(m.label || m.url);
-      return '<li class="mat-item">'+
-        '<span class="mat-num">'+(idx+1)+'</span>'+
-        '<span class="mat-label" title="'+escapeHtml(m.label||m.url)+'">'+labelHtml+'</span>'+
-        (isLink ? '<a class="mat-open" href="'+escapeHtml(m.url)+'" target="_blank" rel="noopener">Open ↗</a>' : '')+
-      '</li>';
-    }).join("")+'</ol>';
+    var groups = {};
+    MATERIAL_TYPE_ORDER.forEach(function(t){ groups[t] = []; });
+    mats.forEach(function(m){
+      var t = MATERIAL_TYPE_ORDER.indexOf(m.type) >= 0 ? m.type : "";
+      groups[t].push(m);
+    });
+    var num = 0;
+    var html = "";
+    MATERIAL_TYPE_ORDER.forEach(function(t){
+      var list = groups[t];
+      if(!list.length) return;
+      html += '<div class="mat-group-label">'+escapeHtml(MATERIAL_TYPE_LABELS[t])+'</div>';
+      html += '<ol class="mat-list">'+list.map(function(m){
+        num++;
+        var isLink = !!m.url;
+        var labelHtml = escapeHtml(m.label || m.url);
+        var status = materialStatus(m);
+        return '<li class="mat-item status-'+status+'">'+
+          '<button type="button" class="mat-status mat-status-'+status+'" data-toggle-material-status="'+m.id+'" title="'+MATERIAL_STATUS_LABEL[status]+'" aria-label="'+MATERIAL_STATUS_LABEL[status]+'">'+MATERIAL_STATUS_ICON[status]+'</button>'+
+          '<span class="mat-num">'+num+'</span>'+
+          '<span class="mat-label" title="'+escapeHtml(m.label||m.url)+'">'+labelHtml+'</span>'+
+          (isLink ? '<a class="mat-open" href="'+escapeHtml(m.url)+'" target="_blank" rel="noopener">Open ↗</a>' : '')+
+        '</li>';
+      }).join("")+'</ol>';
+    });
+    return html;
+  }
+
+  function toggleMaterialStatus(courseId, materialId){
+    var course = courseById(courseId);
+    if(!course) return;
+    var mats = courseMaterials(course);
+    var m = mats.find(function(x){ return x.id === materialId; });
+    if(!m) return;
+    m.status = nextMaterialStatus(materialStatus(m));
+    course.materials = mats;
+    saveLocal(); render();
   }
 
   function scheduleListHtml(course){
@@ -2491,8 +2546,13 @@
   });
 
   function materialRowHtml(m){
-    return '<div class="material-row">'+
-      '<input type="text" class="mat-label-input" placeholder="Label (e.g. Week 3 slides)" value="'+escapeHtml(m.label||"")+'">'+
+    m = m || {};
+    var typeOpts = MATERIAL_TYPE_ORDER.map(function(t){
+      return '<option value="'+t+'" '+(m.type===t?'selected':'')+'>'+escapeHtml(t===""?"No type":MATERIAL_TYPE_LABELS[t])+'</option>';
+    }).join("");
+    return '<div class="material-row" data-id="'+escapeHtml(m.id||"")+'" data-status="'+escapeHtml(materialStatus(m))+'">'+
+      '<select class="mat-type-input">'+typeOpts+'</select>'+
+      '<input type="text" class="mat-label-input" placeholder="Label (e.g. Problem Set 3)" value="'+escapeHtml(m.label||"")+'">'+
       '<input type="text" class="mat-url-input" placeholder="Link (optional)" value="'+escapeHtml(m.url||"")+'">'+
       '<button type="button" class="mat-remove" aria-label="Remove material">×</button>'+
     '</div>';
@@ -2510,7 +2570,14 @@
     rows.forEach(function(row){
       var label = row.querySelector(".mat-label-input").value.trim();
       var url = row.querySelector(".mat-url-input").value.trim();
-      if(label || url) out.push({id:genId(), label:label, url:url});
+      var type = row.querySelector(".mat-type-input").value;
+      if(label || url){
+        out.push({
+          id: row.dataset.id || genId(),
+          label: label, url: url, type: type,
+          status: row.dataset.status || "todo"
+        });
+      }
     });
     return out;
   }
@@ -2831,6 +2898,8 @@
     }
     var courseId = state.courseFilter;
     if(!courseId) return;
+    var matStatus = e.target.closest("[data-toggle-material-status]");
+    if(matStatus){ toggleMaterialStatus(courseId, matStatus.dataset.toggleMaterialStatus); return; }
     if(e.target.closest("[data-fs-connect]")){ connectFolder(courseId); return; }
     if(e.target.closest("[data-fs-change]")){ connectFolder(courseId); return; }
     if(e.target.closest("[data-fs-reconnect]")){ reconnectFolder(courseId); return; }
